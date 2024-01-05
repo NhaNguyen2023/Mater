@@ -1,0 +1,643 @@
+---
+title: "BreastCancer_Query_5_years"
+author: "NhaNguyen"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Load file
+```{r}
+rm(list = ls())
+library(readr)
+library('dplyr')
+library(ggplot2)
+library(sqldf)
+library("Rcmdr")  #continuous var
+library(moments)  #skewness,kurtosis
+library("plyr")   #categorical var
+library(gridExtra)  #graph
+library(car)  #Scatterplot matrix
+library(gmodels)  #Evaluate the model
+library(Hmisc)  #Imputate missing values
+# library(DMwR) #Compute the accuracy of imputation, but need to install the other packages
+library(stats)  #multiple regression lm() function, lapply function
+library(PerformanceAnalytics) #chart.Correlation (Scatterplot)
+library(C50)
+library(dataQualityR)
+
+library(AppliedPredictiveModeling)  #Scatterplot
+library(caret)  #classification & regression training
+
+breast <- read_csv("~/U/DataMgmt_Breast/BreastCancer_Query_5_years.csv")
+
+write_csv(breast[,c("status","scale")],"~/U/DataMgmt_Breast/BreastCancer_Query_5_years.csv")
+# write_csv(wp[,c("status","scale")],"~/...",append = T)
+head(read_csv("~/U/DataMgmt_Breast/breastCancer.csv"))
+mwl <- read_csv("~/U/DataMgmt_Breast/breastCancer.csv")
+```
+
+
+```{r inspection}
+# Inspecting data
+str(nasa)
+head(nasa)
+any(is.na(nasa))
+colSums(is.na(nasa))
+```
+
+
+```{r transformation}
+# Transforming data
+nasa$con_mental_workload <- nasa$mental_workload*5
+nasa$con_mental <- nasa$mental*5
+nasa$con_physical <- nasa$physical*5
+nasa$con_temporal <- nasa$temporal*5
+nasa$con_performance <- nasa$performance*5
+nasa$con_frustration <- nasa$frustration*5
+nasa$con_effort <- nasa$effort*5
+summary(nasa)
+numSummary(nasa$RSME_effort)
+numSummary(nasa$con_mental_workload)
+numSummary(nasa$con_mental)
+numSummary(nasa$con_physical)
+numSummary(nasa$con_temporal)
+numSummary(nasa$con_performance)
+numSummary(nasa$con_frustration)
+numSummary(nasa$con_effort)
+
+nasa$cat_mental_workload <- nasa$mental_workload
+nasa$cat_mental_workload[nasa$mental_workload <=2] <- "extreme underload"
+nasa$cat_mental_workload[nasa$mental_workload >2 & nasa$mental_workload <=5] <- "underload"
+nasa$cat_mental_workload[nasa$mental_workload >5 & nasa$mental_workload <=10] <- "optimal load 1"
+nasa$cat_mental_workload[nasa$mental_workload >10 & nasa$mental_workload <=15] <- "optimal load 2"
+nasa$cat_mental_workload[nasa$mental_workload >15 & nasa$mental_workload <=18] <- "overload"
+nasa$cat_mental_workload[nasa$mental_workload >18] <- "extreme overload"
+cbind(table(nasa$cat_mental_workload),prop.table(table(nasa$cat_mental_workload)))
+cbind(table(nasa$temporal_vs_frustration),prop.table(table(nasa$temporal_vs_frustration)))
+cbind(table(nasa$performance_vs_mental),prop.table(table(nasa$performance_vs_mental)))
+cbind(table(nasa$mental_vs_physical),prop.table(table(nasa$mental_vs_physical)))
+cbind(table(nasa$frustration_vs_performance),prop.table(table(nasa$frustration_vs_performance)))
+cbind(table(nasa$temporal_vs_effort),prop.table(table(nasa$temporal_vs_effort)))
+cbind(table(nasa$physical_vs_frustration),prop.table(table(nasa$physical_vs_frustration)))
+cbind(table(nasa$performance_vs_temporal),prop.table(table(nasa$performance_vs_temporal)))
+cbind(table(nasa$mental_vs_effort),prop.table(table(nasa$mental_vs_effort)))
+cbind(table(nasa$physical_vs_temporal),prop.table(table(nasa$physical_vs_temporal)))
+cbind(table(nasa$frustration_vs_effort),prop.table(table(nasa$frustration_vs_effort)))
+cbind(table(nasa$physical_vs_performance),prop.table(table(nasa$physical_vs_performance)))
+cbind(table(nasa$temporal_vs_mental),prop.table(table(nasa$temporal_vs_mental)))
+cbind(table(nasa$effort_vs_physical),prop.table(table(nasa$effort_vs_physical)))
+cbind(table(nasa$frustration_vs_mental),prop.table(table(nasa$frustration_vs_mental)))
+cbind(table(nasa$performance_vs_effort),prop.table(table(nasa$performance_vs_effort)))
+tab <- table(nasa$temporal_vs_frustration, nasa$performance_vs_mental, nasa$mental_vs_physical, nasa$frustration_vs_performance, nasa$temporal_vs_effort, nasa$physical_vs_frustration, nasa$performance_vs_temporal, nasa$mental_vs_effort, nasa$physical_vs_temporal, nasa$frustration_vs_effort, nasa$physical_vs_performance, nasa$temporal_vs_mental, nasa$effort_vs_physical, nasa$frustration_vs_mental, nasa$performance_vs_effort)
+addmargins(tab)
+prop.table(tab)
+
+
+wp$con_mental_workload <- wp$mental_workload*5
+wp$con_solving_deciding <- wp$solving_deciding*5
+wp$con_response_selection <- wp$response_selection*5
+wp$con_task_space <- wp$task_space*5
+wp$con_verbal_material <- wp$verbal_material*5
+wp$con_visual_resources <- wp$visual_resources*5
+wp$con_auditory_resources <- wp$auditory_resources*5
+wp$con_manual_response <- wp$manual_response*5
+wp$con_speech_response <- wp$speech_response*5
+summary(wp)
+numSummary(wp$RSME_effort)
+numSummary(wp$con_mental_workload)
+numSummary(wp$con_solving_deciding)
+numSummary(wp$con_response_selection)
+numSummary(wp$con_task_space)
+numSummary(wp$con_verbal_material)
+numSummary(wp$con_visual_resources)
+numSummary(wp$con_auditory_resources)
+numSummary(wp$con_manual_response)
+numSummary(wp$con_speech_response)
+
+wp$cat_mental_workload <- wp$mental_workload
+wp$cat_mental_workload[wp$mental_workload <=2] <- "extreme underload"
+wp$cat_mental_workload[wp$mental_workload >2 & wp$mental_workload <=5] <- "underload"
+wp$cat_mental_workload[wp$mental_workload >5 & wp$mental_workload <=10] <- "optimal load 1"
+wp$cat_mental_workload[wp$mental_workload >10 & wp$mental_workload <=15] <- "optimal load 2"
+wp$cat_mental_workload[wp$mental_workload >15 & wp$mental_workload <=18] <- "overload"
+wp$cat_mental_workload[wp$mental_workload >18] <- "extreme overload"
+cbind(table(wp$cat_mental_workload),prop.table(table(wp$cat_mental_workload)))
+
+
+efs$con_mental_workload <- efs$mental_workload*5
+efs$con_mental_demand <- efs$mental_demand*5
+efs$con_parallelism <- efs$parallelism*5
+efs$con_temporal_demand <- efs$temporal_demand*5
+efs$con_manual_Activity <- efs$manual_Activity*5
+efs$con_visual_attention <- efs$visual_attention*5
+efs$con_effort <- efs$effort*5
+efs$con_solving_deciding <- efs$solving_deciding*5
+efs$con_frustration <- efs$frustration*5
+efs$con_context_bias <- efs$context_bias*5
+efs$con_task_space <- efs$task_space*5
+efs$con_motivation <- efs$motivation*5
+efs$con_verbal_material <- efs$verbal_material*5
+efs$con_skill <- efs$skill*5
+efs$con_auditory_attention <- efs$auditory_attention*5
+efs$con_physical_demand <- efs$physical_demand*5
+efs$con_speech_response <- efs$speech_response*5
+efs$con_utility <- efs$utility*5
+efs$con_past_knowledge_expertise <- efs$past_knowledge_expertise*5
+efs$con_arousal <- efs$arousal*5
+efs$con_performance <- efs$performance*5
+summary(efs)
+numSummary(efs$con_mental_workload)
+numSummary(efs$con_mental_demand)
+numSummary(efs$con_parallelism)
+numSummary(efs$con_temporal_demand)
+numSummary(efs$con_manual_Activity)
+numSummary(efs$con_visual_attention)
+numSummary(efs$con_effort)
+numSummary(efs$con_solving_deciding)
+numSummary(efs$con_frustration)
+numSummary(efs$con_context_bias)
+numSummary(efs$con_task_space)
+numSummary(efs$con_motivation)
+numSummary(efs$con_verbal_material)
+numSummary(efs$con_skill)
+numSummary(efs$con_auditory_attention)
+numSummary(efs$con_physical_demand)
+numSummary(efs$con_speech_response)
+numSummary(efs$con_utility)
+numSummary(efs$con_past_knowledge_expertise)
+numSummary(efs$con_arousal)
+numSummary(efs$con_performance)
+
+efs$cat_mental_workload <- efs$mental_workload
+efs$cat_mental_workload[efs$mental_workload <=2] <- "extreme underload"
+efs$cat_mental_workload[efs$mental_workload >2 & efs$mental_workload <=5] <- "underload"
+efs$cat_mental_workload[efs$mental_workload >5 & efs$mental_workload <=10] <- "optimal load 1"
+efs$cat_mental_workload[efs$mental_workload >10 & efs$mental_workload <=15] <- "optimal load 2"
+efs$cat_mental_workload[efs$mental_workload >15 & efs$mental_workload <=18] <- "overload"
+efs$cat_mental_workload[efs$mental_workload >18] <- "extreme overload"
+cbind(table(efs$cat_mental_workload),prop.table(table(efs$cat_mental_workload)))
+
+mwl$con_mental_workload <- mwl$mental_workload*5
+```
+<!-- nasa$cat_mental <- nasa$mental -->
+<!-- nasa$cat_mental[nasa$mental <=2] <- "low" -->
+<!-- nasa$cat_mental[nasa$mental >2 & nasa$mental <=7] <- "low" -->
+<!-- nasa$cat_mental[nasa$mental >7 & nasa$mental <=13] <- "moderate" -->
+<!-- nasa$cat_mental[nasa$mental >13 & nasa$mental <=18] <- "high" -->
+<!-- nasa$cat_mental[nasa$mental >18] <- "very high" -->
+
+<!-- nasa$cat_physical <- nasa$physical -->
+<!-- nasa$cat_physical[nasa$physical <=2] <- "very low" -->
+<!-- nasa$cat_physical[nasa$physical >2 & nasa$physical <=7] <- "low" -->
+<!-- nasa$cat_physical[nasa$physical >7 & nasa$physical <=13] <- "moderate" -->
+<!-- nasa$cat_physical[nasa$physical >13 & nasa$physical <=18] <- "high" -->
+<!-- nasa$cat_physical[nasa$physical >18] <- "very high" -->
+
+<!-- nasa$cat_temporal <- nasa$temporal -->
+<!-- nasa$cat_temporal[nasa$temporal <=2] <- "very low" -->
+<!-- nasa$cat_temporal[nasa$temporal >2 & nasa$temporal <=7] <- "low" -->
+<!-- nasa$cat_temporal[nasa$temporal >7 & nasa$temporal <=13] <- "moderate" -->
+<!-- nasa$cat_temporal[nasa$temporal >13 & nasa$temporal <=18] <- "high" -->
+<!-- nasa$cat_temporal[nasa$temporal >18] <- "very high" -->
+
+<!-- nasa$cat_performance <- nasa$performance -->
+<!-- nasa$cat_performance[nasa$performance <=2] <- "perfect" -->
+<!-- nasa$cat_performance[nasa$performance >2 & nasa$performance <=7] <- "good" -->
+<!-- nasa$cat_performance[nasa$performance >7 & nasa$performance <=13] <- "moderate" -->
+<!-- nasa$cat_performance[nasa$performance >13 & nasa$performance <=18] <- "not good" -->
+<!-- nasa$cat_performance[nasa$performance >18] <- "failure" -->
+
+<!-- nasa$cat_frustration <- nasa$frustration -->
+<!-- nasa$cat_frustration[nasa$frustration <=2] <- "very low" -->
+<!-- nasa$cat_frustration[nasa$frustration >2 & nasa$frustration <=7] <- "low" -->
+<!-- nasa$cat_frustration[nasa$frustration >7 & nasa$frustration <=13] <- "moderate" -->
+<!-- nasa$cat_frustration[nasa$frustration >13 & nasa$frustration <=18] <- "high" -->
+<!-- nasa$cat_frustration[nasa$frustration >18] <- "very high" -->
+
+<!-- nasa$cat_effort <- nasa$effort -->
+<!-- nasa$cat_effort[nasa$effort <=2] <- "very low" -->
+<!-- nasa$cat_effort[nasa$effort >2 & nasa$effort <=7] <- "low" -->
+<!-- nasa$cat_effort[nasa$effort >7 & nasa$effort <=13] <- "moderate" -->
+<!-- nasa$cat_effort[nasa$effort >13 & nasa$effort <=18] <- "high" -->
+<!-- nasa$cat_effort[nasa$effort >18] <- "very high" -->
+
+```{r normality}
+# Creating graphs
+gg <- ggplot(nasa, aes(x=nasa$con_mental_workload))
+gg <- gg + labs(x = "Mental workload score")
+gg <- gg + geom_histogram(binwidth=2, colour="black", aes(y=..density..,fill=..count..))
+gg <- gg + scale_fill_gradient("Count", low="#DCDCDC", high="#7C7C7C")
+gg <- gg + stat_function(fun=dnorm, color="red",args=list(mean=mean(nasa$con_mental_workload,na.rm = T), sd=sd(nasa$con_mental_workload,na.rm = T)))
+gg
+qqnorm(nasa$con_mental_workload)
+qqline(nasa$con_mental_workload, col=2)
+boxplot(nasa$con_mental_workload)
+skewness((nasa$con_mental_workload),na.rm = T)
+kurtosis((nasa$con_mental_workload),na.rm = T)
+
+nasa_sub <- nasa
+cutoffabove_nasa <- 55 + 1.5*IQR(nasa$con_mental_workload,na.rm = T)
+cutoffbelow_nasa <- 55 - 1.5*IQR(nasa$con_mental_workload,na.rm = T)
+nasa_sub <- subset(nasa, con_mental_workload <= cutoffabove_nasa & con_mental_workload >= cutoffbelow_nasa)
+summary(nasa_sub$con_mental_workload)
+q1 <- qplot(x = con_mental_workload, data = nasa, colour=I("red"), fill=I("white")) +
+  theme_bw() +
+  theme(
+    plot.background = element_blank()
+    ,panel.grid.major = element_blank()
+    ,panel.grid.minor = element_blank()
+    ,panel.border = element_blank()
+  ) +
+  theme(axis.line = element_line(color = 'red'))
+q2 <- qplot(x = con_mental_workload, data = nasa_sub, colour=I("blue"), fill=I("white")) + 
+  scale_x_continuous(limits = c(25,85)) +
+  theme_bw() +
+  theme(
+    plot.background = element_blank()
+    ,panel.grid.major = element_blank()
+    ,panel.grid.minor = element_blank()
+    ,panel.border = element_blank()
+  ) +
+  theme(axis.line = element_line(color = 'blue'))
+grid.arrange(q1, q2, ncol=1)
+
+count_nasaMWL <- table(nasa$cat_mental_workload)
+barplot(count_nasaMWL)
+
+
+gg <- ggplot(wp, aes(x=wp$con_mental_workload))
+gg <- gg + labs(x = "Mental workload score")
+gg <- gg + geom_histogram(binwidth=2, colour="black", aes(y=..density..,fill=..count..))
+gg <- gg + scale_fill_gradient("Count", low="#DCDCDC", high="#7C7C7C")
+gg <- gg + stat_function(fun=dnorm, color="red",args=list(mean=mean(wp$con_mental_workload,na.rm = T), sd=sd(wp$con_mental_workload,na.rm = T)))
+gg
+qqnorm(wp$con_mental_workload)
+qqline(wp$con_mental_workload, col=2)
+boxplot(wp$con_mental_workload)
+skewness((wp$con_mental_workload),na.rm = T)
+kurtosis((wp$con_mental_workload),na.rm = T)
+
+wp_sub <- wp
+cutoffabove_wp <- 50 + 1.5*IQR(wp$con_mental_workload,na.rm = T)
+cutoffbelow_wp <- 50 - 1.5*IQR(wp$con_mental_workload,na.rm = T)
+wp_sub <- subset(wp, con_mental_workload <= cutoffabove_wp & con_mental_workload >= cutoffbelow_wp)
+summary(wp_sub$con_mental_workload)
+q3 <- qplot(x = con_mental_workload, data = wp, colour=I("red"), fill=I("white")) +
+  theme_bw() +
+  theme(
+    plot.background = element_blank()
+    ,panel.grid.major = element_blank()
+    ,panel.grid.minor = element_blank()
+    ,panel.border = element_blank()
+  ) +
+  theme(axis.line = element_line(color = 'red'))
+q4 <- qplot(x = con_mental_workload, data = wp_sub, colour=I("blue"), fill=I("white")) + 
+  scale_x_continuous(limits = c(12.5,87.5)) +
+  theme_bw() +
+  theme(
+    plot.background = element_blank()
+    ,panel.grid.major = element_blank()
+    ,panel.grid.minor = element_blank()
+    ,panel.border = element_blank()
+  ) +
+  theme(axis.line = element_line(color = 'blue'))
+grid.arrange(q3, q4, ncol=1)
+
+# count_wpMWL <- table(wp$cat_mental_workload)
+# barplot(count_wpMWL)
+
+
+gg <- ggplot(efs, aes(x=efs$con_mental_workload))
+gg <- gg + labs(x = "Mental workload score")
+gg <- gg + geom_histogram(binwidth=2, colour="black", aes(y=..density..,fill=..count..))
+gg <- gg + scale_fill_gradient("Count", low="#DCDCDC", high="#7C7C7C")
+gg <- gg + stat_function(fun=dnorm, color="red",args=list(mean=mean(efs$con_mental_workload,na.rm = T), sd=sd(efs$con_mental_workload,na.rm = T)))
+gg
+qqnorm(efs$con_mental_workload)
+qqline(efs$con_mental_workload, col=2)
+boxplot(efs$con_mental_workload)
+skewness((efs$con_mental_workload),na.rm = T)
+kurtosis((efs$con_mental_workload),na.rm = T)
+
+efs_sub <- efs
+cutoffabove_efs <- 50 + 1.5*IQR(efs$con_mental_workload,na.rm = T)
+cutoffbelow_efs <- 50 - 1.5*IQR(efs$con_mental_workload,na.rm = T)
+efs_sub <- subset(efs, con_mental_workload <= cutoffabove_efs & con_mental_workload >= cutoffbelow_efs)
+summary(efs_sub$con_mental_workload)
+q5 <- qplot(x = con_mental_workload, data = efs, colour=I("red"), fill=I("white")) +
+  theme_bw() +
+  theme(
+    plot.background = element_blank()
+    ,panel.grid.major = element_blank()
+    ,panel.grid.minor = element_blank()
+    ,panel.border = element_blank()
+  ) +
+  theme(axis.line = element_line(color = 'red'))
+q6 <- qplot(x = con_mental_workload, data = efs_sub, colour=I("blue"), fill=I("white")) + 
+  scale_x_continuous(limits = c(12.5,87.5)) +
+  theme_bw() +
+  theme(
+    plot.background = element_blank()
+    ,panel.grid.major = element_blank()
+    ,panel.grid.minor = element_blank()
+    ,panel.border = element_blank()
+  ) +
+  theme(axis.line = element_line(color = 'blue'))
+grid.arrange(q5, q6, ncol=1)
+
+# count_efsMWL <- table(efs$cat_mental_workload)
+# barplot(count_efsMWL)
+
+shapiro.test(nasa$con_mental_workload)
+shapiro.test(wp$con_mental_workload)
+shapiro.test(efs$con_mental_workload)
+
+shapiro.test(log(nasa$con_mental_workload))
+shapiro.test(sqrt(nasa$con_mental_workload))
+hist(sqrt(nasa$con_mental_workload))
+#kolmogorov-smirnov
+```
+
+```{r train & test set}
+
+## Impute values
+impute(nasa$con_mental_workload, median)
+nasa$con_mental_workload[is.na(nasa$con_mental_workload)] <- median(nasa$con_mental_workload, na.rm = T)
+any(is.na(nasa$con_mental_workload))
+impute(efs$con_mental_workload, median)
+efs$con_mental_workload[is.na(efs$con_mental_workload)] <- median(efs$con_mental_workload, na.rm = T)
+any(is.na(efs$con_mental_workload))
+## Randomise the Data 
+nasa <- nasa[sample(1:nrow(nasa)), ]
+wp <- wp[sample(1:nrow(wp)), ]
+efs <- efs[sample(1:nrow(efs)), ]
+## Split the data into train and test 70:30
+train_nasa <- nasa[1:161,] 
+test_nasa <- nasa[162:230,]
+train_wp <- wp[1:154,] 
+test_wp <- wp[155:217,]
+train_efs <- efs[1:167,] 
+test_efs <- efs[168:237,]
+
+## Check zero & near zero-variance
+nzv_nasa <- nearZeroVar(nasa[,13:20], saveMetrics = T)
+nzv_nasa[nzv_nasa$nzv,][1:10,]
+nzv_wp <- nearZeroVar(wp[,13:22], saveMetrics = T)
+nzv_wp[nzv_wp$nzv,][1:10,]
+nzv_efs <- nearZeroVar(efs[,13:34], saveMetrics = T)
+nzv_efs[nzv_efs$nzv,][1:10,]
+
+# Scatter plot matrix
+## put histograms on the diagonal
+panel.hist <- function(x, ...)
+{
+  usr <- par("usr"); on.exit(par(usr))
+  par(usr = c(usr[1:2], 0, 1.5) )
+  h <- hist(x, plot = FALSE)
+  breaks <- h$breaks; nB <- length(breaks)
+  y <- h$counts; y <- y/max(y)
+  rect(breaks[-nB], 0, breaks[-1], y, col = "cyan", ...)
+}
+## put (absolute) correlations on the upper panels, with size proportional to the correlations.
+panel.cor <- function(x, y, digits = 2, prefix = "", cex.cor, ...)
+{
+  usr <- par("usr"); on.exit(par(usr))
+  par(usr = c(0, 1, 0, 1))
+  r <- abs(cor(x, y))
+  txt <- format(c(r, 0.123456789), digits = digits)[1]
+  txt <- paste0(prefix, txt)
+  if(missing(cex.cor)) cex.cor <- 0.8/strwidth(txt)
+  text(0.5, 0.5, txt, cex = cex.cor * r)
+}
+pairs(~con_mental_workload+con_mental+con_physical+con_temporal+con_performance+con_frustration+con_effort, data=train_nasa, main="Scatter plot matrix for NASA_MWL",
+      panel = panel.smooth,
+      cex = 1.5, pch = 24, bg = "light blue",
+      diag.panel = panel.hist, cex.labels = 2, font.labels = 2,
+      lower.panel = panel.smooth, upper.panel = panel.cor)
+pairs(~con_mental_workload+con_solving_deciding+con_response_selection+con_task_space+con_verbal_material+con_visual_resources+con_auditory_resources+con_manual_response+con_speech_response, data=train_wp, main="Scatter plot matrix for WP_MWL",
+      panel = panel.smooth,
+      cex = 1.5, pch = 24, bg = "light blue",
+      diag.panel = panel.hist, cex.labels = 2, font.labels = 2,
+      lower.panel = panel.smooth, upper.panel = panel.cor)
+pairs(~con_mental_workload+con_mental_demand+con_parallelism+con_temporal_demand+con_manual_Activity+con_visual_attention+con_effort+con_solving_deciding+con_frustration+con_context_bias+con_task_space+con_motivation+con_verbal_material+con_skill+con_auditory_attention+con_physical_demand+con_speech_response+con_utility+con_past_knowledge_expertise+con_arousal+con_performance, data=train_efs, main="Scatter plot matrix for EFS_MWL",
+      panel = panel.smooth,
+      cex = 1.5, pch = 24, bg = "light blue",
+      diag.panel = panel.hist, cex.labels = 2, font.labels = 2,
+      lower.panel = panel.smooth, upper.panel = panel.cor)
+
+train_nasa.num <- train_nasa[, sapply(train_nasa, is.numeric)]
+chart.Correlation(train_nasa.num, histogram = T)
+train_wp.num <- train_wp[, sapply(train_wp, is.numeric)]
+chart.Correlation(train_wp.num, histogram = T)
+train_efs.num <- train_efs[, sapply(train_efs, is.numeric)]
+chart.Correlation(train_efs.num, histogram = T)
+# corrplot(M, method) ; M <- corr(nasa)
+```
+
+```{r Linear Regression model}
+# Multiple Regression modeling
+## Linear Regression
+nasa_model_reg01 <- glm(formula = con_mental_workload ~ con_mental+con_physical+con_performance+con_frustration+con_temporal+con_effort, data = nasaTrain01) 
+summary(nasa_model_reg01)
+
+wp_model_reg <- glm(formula = con_mental_workload ~ con_solving_deciding+con_response_selection+con_task_space+con_verbal_material+con_visual_resources+con_auditory_resources+con_manual_response+con_speech_response, data = wpTrain) 
+summary(wp_model_reg)
+
+efs_model_reg <- glm(formula = con_mental_workload ~ con_mental_demand+con_parallelism+con_temporal_demand+con_manual_Activity+con_visual_attention+con_effort+con_solving_deciding+con_frustration+con_context_bias+con_task_space+con_motivation+con_verbal_material+con_skill+con_auditory_attention+con_physical_demand+con_speech_response+con_utility+con_past_knowledge_expertise+con_arousal+con_performance, data = efsTrain) 
+summary(efs_model_reg)
+
+### Making predictions
+nasa_pred_reg01 <- predict(nasa_model_reg01, nasaTest01)
+nasa.reg01 <- data.frame(R2 = R2(nasa_pred_reg01, nasaTest01$con_mental_workload),RMSE = RMSE(nasa_pred_reg01, nasaTest01$con_mental_workload))
+nasa.reg <- rbind(nasa.reg01,nasa.reg02,nasa.reg03,nasa.reg04,nasa.reg05,nasa.reg06,nasa.reg07,nasa.reg08,nasa.reg09,nasa.reg10)
+nasa.reg$scale <- "nasa"
+
+wp_pred_reg <- predict(wp_model_reg, wpTest)
+
+
+efs_pred_reg <- predict(efs_model_reg, efsTest)
+t.test(efsTest$con_mental_workload, efs_pred_reg, paired = T)
+# efs.mse <- mse(efsTest$con_mental_workload, efs_pred_reg)
+
+nasa_reg <- data.frame(nasa_pred_reg,nasaTest$con_mental_workload,nasaTest$scale)
+wp_reg <- data.frame(wp_pred_reg,wpTest$con_mental_workload,wpTest$scale)
+efs_reg <- data.frame(efs_pred_reg,efsTest$con_mental_workload,efsTest$scale)
+mwl_reg <- rbind(nasa_reg,wp_reg)
+mwl_reg <- rbind(mwl_reg,efs_reg)
+colnames(mwl_reg) <- c("predicted","actual","scale")
+
+### RMSE out of lm() result
+RSS1 <- c(crossprod(nasa_model_reg$residuals))
+MSE1 <- RSS1 / length(nasa_model_reg$residuals)
+RMSE1 <- sqrt(MSE1)
+sig2_1 <- RSS1 / nasa_model_reg$df.residual
+
+RSS2 <- c(crossprod(wp_model_reg$residuals))
+MSE2 <- RSS2 / length(wp_model_reg$residuals)
+RMSE2 <- sqrt(MSE2)
+sig2_2 <- RSS2 / wp_model_reg$df.residual
+
+RSS3 <- c(crossprod(efs_model_reg$residuals))
+MSE3 <- RSS3 / length(efs_model_reg$residuals)
+RMSE3 <- sqrt(MSE3)
+sig2_3 <- RSS3 / efs_model_reg$df.residual
+
+anova(nasa_model_reg, wp_model_reg, efs_model_reg, test='Chisq')
+
+ggplot(aes(x=scale, y=predicted, color=scale, fill=I("white")), data=nasa_reg) +
+  geom_boxplot() +
+  geom_hline(aes(yintercept = median(age)), colour = 'black') +
+  theme_bw() +
+  theme(
+    plot.background = element_blank()
+    ,panel.grid.major = element_blank()
+    ,panel.grid.minor = element_blank()
+    ,panel.border = element_blank()
+    ,text = element_text(size=18)
+  ) +
+  theme(axis.line = element_line(color = 'black')) +
+  ggtitle('R-squared Boxplot by Mental workload measures')
+
+write_csv(nasaTest[,c("mental_workload","scale")],"~/Documents/03_Dissertation/mentalWorkload.csv")
+write_csv(wpTest[,c("mental_workload","scale")],"~/Documents/03_Dissertation/mentalWorkload.csv",append = T)
+write_csv(efsTest[,c("mental_workload","scale")],"~/Documents/03_Dissertation/mentalWorkload.csv",append = T)
+head(read_csv("~/Documents/03_Dissertation/mentalWorkload.csv"))
+mwl <- read_csv("~/Documents/03_Dissertation/mentalWorkload.csv")
+
+
+## Logistic Regression
+### Transforming target value & modeling
+#### NASA
+nasa_model_log <- glm(formula = mental_workload_recode ~ con_mental+con_physical+con_performance+con_frustration+con_temporal+con_effort, 
+                      data = nasaTrain, family = binomial(link='logit'))
+summary(nasa_model_log)
+
+#### WP
+wp_model_log <- glm(formula = mental_workload_recode ~ con_solving_deciding+con_response_selection+con_task_space+con_verbal_material+con_visual_resources+con_auditory_resources+con_manual_response+con_speech_response, 
+                    data = wpTrain, family = binomial(link='logit'))
+summary(wp_model_log)
+
+#### EFS
+efs_model_log <- glm(formula = mental_workload_recode ~ con_mental_demand+con_parallelism+con_temporal_demand+con_manual_Activity+con_visual_attention+con_effort+con_solving_deciding+con_frustration+con_context_bias+con_task_space+con_motivation+con_verbal_material+con_skill+con_auditory_attention+con_physical_demand+con_speech_response+con_utility+con_past_knowledge_expertise+con_arousal+con_performance, 
+                     data = efsTrain, family = binomial(link='logit'))
+summary(efs_model_log)
+
+### Making predictions
+#### NASA
+exp(coefficients(nasa_model_log))
+predicted1 <- plogis(predict(nasa_model_log, nasaTest))
+#### WP
+exp(coefficients(wp_model_log))
+predicted2 <- plogis(predict(wp_model_log, wpTest))
+#### EFS
+exp(coefficients(efs_model_log))
+predicted3 <- plogis(predict(efs_model_log, efsTest))
+
+### Displaying results
+#### NASA
+nagelkerke(nasa_model_log)
+confusionMatrix(nasa_model_log$mental_workload_recode, predicted, threshold = 0.8)
+sensitivity(nasa_model_log$mental_workload_recode, predicted, threshold = 0.8)
+specificity(nasa_model_log$mental_workload_recode, predicted, threshold = 0.5)
+vif(nasa_model_log)
+#### WP
+nagelkerke(wp_model_log)
+confusionMatrix(wp_model_log$mental_workload_recode, predicted, threshold = 0.8)
+sensitivity(wp_model_log$mental_workload_recode, predicted, threshold = 0.8)
+specificity(wp_model_log$mental_workload_recode, predicted, threshold = 0.5)
+vif(wp_model_log)
+#### EFS
+nagelkerke(efs_model_log)
+confusionMatrix(efs_model_log$mental_workload_recode, predicted, threshold = 0.8)
+sensitivity(efs_model_log$mental_workload_recode, predicted, threshold = 0.8)
+specificity(efs_model_log$mental_workload_recode, predicted, threshold = 0.5)
+vif(efs_model_log)
+
+anova(nasa_model_log, wp_model_log, efs_model_log,test = "Chisq")
+
+## Building the model
+nasa_model_lr <- lm(con_mental_workload ~ price + bore + horsepower*city_mpg*highway_mpg + 
+                   wheel_base*length*width*curb_weight*engine_size, data = train_nasa)
+wp_model_lr <- lm(con_mental_workload ~ normalized_losses + bore + horsepower*city_mpg*highway_mpg + 
+                    wheel_base*length*width*curb_weight*engine_size, data = train_wp)
+efs_model_lr <- lm(con_mental_workload ~ normalized_losses + bore + horsepower*city_mpg*highway_mpg + 
+                    wheel_base*length*width*curb_weight*engine_size, data = train_efs)
+## Making predictions
+nasa_pred_lr <- predict(nasa_model_lr, test_nasa)
+wp_pred_lr <- predict(wp_model_lr, test_wp)
+efs_pred_lr <- predict(efs_model_lr, test_efs)
+print(nasa_pred_lr)
+print(wp_pred_lr)
+print(efs_pred_lr)
+## Displaying results
+summary(nasa_model_lr)
+summary(wp_model_lr)
+summary(efs_model_lr)
+## RMSE out of lm() result
+RSS1 <- c(crossprod(nasa_model_lr$residuals))
+MSE1 <- RSS1 / length(nasa_model_lr$residuals)
+RMSE1 <- sqrt(MSE1)
+sig2_1 <- RSS1 / nasa_model_lr$df.residual
+
+RSS2 <- c(crossprod(wp_model_lr$residuals))
+MSE2 <- RSS2 / length(wp_model_lr$residuals)
+RMSE2 <- sqrt(MSE2)
+sig2_2 <- RSS2 / wp_model_lr$df.residual
+
+RSS3 <- c(crossprod(efs_model_lr$residuals))
+MSE3 <- RSS3 / length(efs_model_lr$residuals)
+RMSE3 <- sqrt(MSE3)
+sig2_3 <- RSS3 / efs_model_lr$df.residual
+
+```
+
+```{r Decision Tree model}
+# Train the model
+nasa_model_dt <- C5.0(train_nasa, train_nasa$default)
+wp_model_dt <- C5.0(train_wp, train_wp$default)
+efs_model_dt <- C5.0(train_efs, train_efs$default)
+summary(nasa_model_dt)
+summary(wp_model_dt)
+summary(efs_model_dt)
+nasa_pred_dt <- predict(nasa_model_dt, test_nasa, type = "class")
+wp_pred_dt <- predict(wp_model_dt, test_wp, type = "class")
+efs_pred_dt <- predict(efs_model_dt, test_efs, type = "class")
+print(nasa_pred_dt)
+print(wp_pred_dt)
+print(efs_pred_dt)
+#sum(credit_pred == credit_test) / length(credit_pred)
+
+# Evaluate the model
+CrossTable(test_nasa$default, nasa_pred_dt,
+           prop.chisq = FALSE, prop.c = FALSE, prop.r = FALSE,
+           dnn = c('actual default', 'predicted default'))
+CrossTable(test_wp$default, wp_pred_dt,
+           prop.chisq = FALSE, prop.c = FALSE, prop.r = FALSE,
+           dnn = c('actual default', 'predicted default'))
+CrossTable(test_efs$default, efs_pred_dt,
+           prop.chisq = FALSE, prop.c = FALSE, prop.r = FALSE,
+           dnn = c('actual default', 'predicted default'))
+```
+
+```{r comparing}
+
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
