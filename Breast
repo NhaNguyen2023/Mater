@@ -20,7 +20,7 @@ library(moments)  #skewness,kurtosis
 library("plyr")   #categorical var
 library(gridExtra)  #graph
 library(car)  #Scatterplot matrix
-library(gmodels)  #Evaluate the model
+library(gmodels)  #Evaluate the model, chi square correlation
 library(Hmisc)  #Imputate missing values
 # library(DMwR) #Compute the accuracy of imputation, but need to install the other packages
 library(stats)  #multiple regression lm() function, lapply function
@@ -33,197 +33,76 @@ library(caret)  #classification & regression training
 
 breast <- read_csv("~/U/DataMgmt_Breast/BreastCancer_Query_5_years.csv")
 
-write_csv(breast[,c("status","scale")],"~/U/DataMgmt_Breast/BreastCancer_Query_5_years.csv")
-# write_csv(wp[,c("status","scale")],"~/...",append = T)
+write_csv(breast[,c("status","scale")],"~/U/DataMgmt_Breast/breastCancer.csv")
+# write_csv(breast_append[,c("status","scale")],"~/...",append = T)
 head(read_csv("~/U/DataMgmt_Breast/breastCancer.csv"))
-mwl <- read_csv("~/U/DataMgmt_Breast/breastCancer.csv")
+breastCancer <- read_csv("~/U/DataMgmt_Breast/breastCancer.csv")
 ```
 
 
 ```{r inspection}
 # Inspecting data
-str(nasa)
-head(nasa)
-any(is.na(nasa))
-colSums(is.na(nasa))
+str(breastCancer)
+head(breastCancer)
+any(is.na(breastCancer))
+colSums(is.na(breastCancer))
 ```
 
 
 ```{r transformation}
 # Transforming data
-nasa$con_mental_workload <- nasa$mental_workload*5
-nasa$con_mental <- nasa$mental*5
-nasa$con_physical <- nasa$physical*5
-nasa$con_temporal <- nasa$temporal*5
-nasa$con_performance <- nasa$performance*5
-nasa$con_frustration <- nasa$frustration*5
-nasa$con_effort <- nasa$effort*5
-summary(nasa)
-numSummary(nasa$RSME_effort)
-numSummary(nasa$con_mental_workload)
-numSummary(nasa$con_mental)
-numSummary(nasa$con_physical)
-numSummary(nasa$con_temporal)
-numSummary(nasa$con_performance)
-numSummary(nasa$con_frustration)
-numSummary(nasa$con_effort)
+breastCancer$Parameter <- str_replace_all(breastCancer$Parameter, c(" " = "_"))
 
-nasa$cat_mental_workload <- nasa$mental_workload
-nasa$cat_mental_workload[nasa$mental_workload <=2] <- "extreme underload"
-nasa$cat_mental_workload[nasa$mental_workload >2 & nasa$mental_workload <=5] <- "underload"
-nasa$cat_mental_workload[nasa$mental_workload >5 & nasa$mental_workload <=10] <- "optimal load 1"
-nasa$cat_mental_workload[nasa$mental_workload >10 & nasa$mental_workload <=15] <- "optimal load 2"
-nasa$cat_mental_workload[nasa$mental_workload >15 & nasa$mental_workload <=18] <- "overload"
-nasa$cat_mental_workload[nasa$mental_workload >18] <- "extreme overload"
-cbind(table(nasa$cat_mental_workload),prop.table(table(nasa$cat_mental_workload)))
-cbind(table(nasa$temporal_vs_frustration),prop.table(table(nasa$temporal_vs_frustration)))
-cbind(table(nasa$performance_vs_mental),prop.table(table(nasa$performance_vs_mental)))
-cbind(table(nasa$mental_vs_physical),prop.table(table(nasa$mental_vs_physical)))
-cbind(table(nasa$frustration_vs_performance),prop.table(table(nasa$frustration_vs_performance)))
-cbind(table(nasa$temporal_vs_effort),prop.table(table(nasa$temporal_vs_effort)))
-cbind(table(nasa$physical_vs_frustration),prop.table(table(nasa$physical_vs_frustration)))
-cbind(table(nasa$performance_vs_temporal),prop.table(table(nasa$performance_vs_temporal)))
-cbind(table(nasa$mental_vs_effort),prop.table(table(nasa$mental_vs_effort)))
-cbind(table(nasa$physical_vs_temporal),prop.table(table(nasa$physical_vs_temporal)))
-cbind(table(nasa$frustration_vs_effort),prop.table(table(nasa$frustration_vs_effort)))
-cbind(table(nasa$physical_vs_performance),prop.table(table(nasa$physical_vs_performance)))
-cbind(table(nasa$temporal_vs_mental),prop.table(table(nasa$temporal_vs_mental)))
-cbind(table(nasa$effort_vs_physical),prop.table(table(nasa$effort_vs_physical)))
-cbind(table(nasa$frustration_vs_mental),prop.table(table(nasa$frustration_vs_mental)))
-cbind(table(nasa$performance_vs_effort),prop.table(table(nasa$performance_vs_effort)))
-tab <- table(nasa$temporal_vs_frustration, nasa$performance_vs_mental, nasa$mental_vs_physical, nasa$frustration_vs_performance, nasa$temporal_vs_effort, nasa$physical_vs_frustration, nasa$performance_vs_temporal, nasa$mental_vs_effort, nasa$physical_vs_temporal, nasa$frustration_vs_effort, nasa$physical_vs_performance, nasa$temporal_vs_mental, nasa$effort_vs_physical, nasa$frustration_vs_mental, nasa$performance_vs_effort)
-addmargins(tab)
-prop.table(tab)
+breastCancer$cat_status_5y <- breastCancer$stutus_5_years
+breastCancer$cat_status_studyCutoff <- breastCancer$Vital_status_recode_(study_cutoff_used)
 
+print (is.factor(breastCancer$Total_number_of_in_situ/malignant_tumors_for_patient)
+print (is.factor(breastCancer$Radiation_recode)
+print (is.factor(breastCancer$Radiation_sequence_with_surgery)
+print (is.factor(breastCancer$COD_to_site_recode)
+print (is.factor(breastCancer$Race)
+print (is.factor(breastCancer$Diagnosis_year)
+print (is.factor(breastCancer$Last_fu_year)
+print (is.factor(breastCancer$interva_years)
 
-wp$con_mental_workload <- wp$mental_workload*5
-wp$con_solving_deciding <- wp$solving_deciding*5
-wp$con_response_selection <- wp$response_selection*5
-wp$con_task_space <- wp$task_space*5
-wp$con_verbal_material <- wp$verbal_material*5
-wp$con_visual_resources <- wp$visual_resources*5
-wp$con_auditory_resources <- wp$auditory_resources*5
-wp$con_manual_response <- wp$manual_response*5
-wp$con_speech_response <- wp$speech_response*5
-summary(wp)
-numSummary(wp$RSME_effort)
-numSummary(wp$con_mental_workload)
-numSummary(wp$con_solving_deciding)
-numSummary(wp$con_response_selection)
-numSummary(wp$con_task_space)
-numSummary(wp$con_verbal_material)
-numSummary(wp$con_visual_resources)
-numSummary(wp$con_auditory_resources)
-numSummary(wp$con_manual_response)
-numSummary(wp$con_speech_response)
+# if not factor, apply the factor function
+breastCancer$factor_totalMalignantTumors <- factor(breastCancer$Total_number_of_in_situ/malignant_tumors_for_patient)
 
-wp$cat_mental_workload <- wp$mental_workload
-wp$cat_mental_workload[wp$mental_workload <=2] <- "extreme underload"
-wp$cat_mental_workload[wp$mental_workload >2 & wp$mental_workload <=5] <- "underload"
-wp$cat_mental_workload[wp$mental_workload >5 & wp$mental_workload <=10] <- "optimal load 1"
-wp$cat_mental_workload[wp$mental_workload >10 & wp$mental_workload <=15] <- "optimal load 2"
-wp$cat_mental_workload[wp$mental_workload >15 & wp$mental_workload <=18] <- "overload"
-wp$cat_mental_workload[wp$mental_workload >18] <- "extreme overload"
-cbind(table(wp$cat_mental_workload),prop.table(table(wp$cat_mental_workload)))
+<!
+breastCancer$cat_HER2 <- breastCancer$Derived_HER2_Recode_(2010+)
+breastCancer$con_HER2[breastCancer$cat_HER2 = "Positive"] <- 3
+breastCancer$con_HER2[breastCancer$cat_HER2 = "Boderline"] <- 2
+breastCancer$con_HER2[breastCancer$cat_HER2 = "Unknown"] <- 1
+breastCancer$con_HER2[breastCancer$cat_HER2 = "Negative"] <- 0
+-->
 
+cbind(table(breastCancer$cat_status_5y),prop.table(table(breastCancer$cat_status_5y)))
+cbind(table(breastCancer$cat_status_studyCutoff),prop.table(table(breastCancer$cat_status_studyCutoff)))
+cbind(table(breastCancer$),prop.table(table(breastCancer$)))
+cbind(table(breastCancer$),prop.table(table(breastCancer$)))
+cbind(table(breastCancer$),prop.table(table(breastCancer$)))
+cbind(table(breastCancer$),prop.table(table(breastCancer$)))
+cbind(table(breastCancer$),prop.table(table(breastCancer$)))
+cbind(table(breastCancer$),prop.table(table(breastCancer$)))
+cbind(table(breastCancer$),prop.table(table(breastCancer$)))
+cbind(table(breastCancer$),prop.table(table(breastCancer$)))
+cbind(table(breastCancer$),prop.table(table(breastCancer$)))
+cbind(table(breastCancer$),prop.table(table(breastCancer$)))
+breastCancer_tab <- table(breastCancer$, breastCancer$,)
+addmargins(breastCancer)
+prop.table(breastCancer)
 
-efs$con_mental_workload <- efs$mental_workload*5
-efs$con_mental_demand <- efs$mental_demand*5
-efs$con_parallelism <- efs$parallelism*5
-efs$con_temporal_demand <- efs$temporal_demand*5
-efs$con_manual_Activity <- efs$manual_Activity*5
-efs$con_visual_attention <- efs$visual_attention*5
-efs$con_effort <- efs$effort*5
-efs$con_solving_deciding <- efs$solving_deciding*5
-efs$con_frustration <- efs$frustration*5
-efs$con_context_bias <- efs$context_bias*5
-efs$con_task_space <- efs$task_space*5
-efs$con_motivation <- efs$motivation*5
-efs$con_verbal_material <- efs$verbal_material*5
-efs$con_skill <- efs$skill*5
-efs$con_auditory_attention <- efs$auditory_attention*5
-efs$con_physical_demand <- efs$physical_demand*5
-efs$con_speech_response <- efs$speech_response*5
-efs$con_utility <- efs$utility*5
-efs$con_past_knowledge_expertise <- efs$past_knowledge_expertise*5
-efs$con_arousal <- efs$arousal*5
-efs$con_performance <- efs$performance*5
-summary(efs)
-numSummary(efs$con_mental_workload)
-numSummary(efs$con_mental_demand)
-numSummary(efs$con_parallelism)
-numSummary(efs$con_temporal_demand)
-numSummary(efs$con_manual_Activity)
-numSummary(efs$con_visual_attention)
-numSummary(efs$con_effort)
-numSummary(efs$con_solving_deciding)
-numSummary(efs$con_frustration)
-numSummary(efs$con_context_bias)
-numSummary(efs$con_task_space)
-numSummary(efs$con_motivation)
-numSummary(efs$con_verbal_material)
-numSummary(efs$con_skill)
-numSummary(efs$con_auditory_attention)
-numSummary(efs$con_physical_demand)
-numSummary(efs$con_speech_response)
-numSummary(efs$con_utility)
-numSummary(efs$con_past_knowledge_expertise)
-numSummary(efs$con_arousal)
-numSummary(efs$con_performance)
+cat("# # # The combined data table\n") # print a header
+print(breastCancer_tab) # print the result
 
-efs$cat_mental_workload <- efs$mental_workload
-efs$cat_mental_workload[efs$mental_workload <=2] <- "extreme underload"
-efs$cat_mental_workload[efs$mental_workload >2 & efs$mental_workload <=5] <- "underload"
-efs$cat_mental_workload[efs$mental_workload >5 & efs$mental_workload <=10] <- "optimal load 1"
-efs$cat_mental_workload[efs$mental_workload >10 & efs$mental_workload <=15] <- "optimal load 2"
-efs$cat_mental_workload[efs$mental_workload >15 & efs$mental_workload <=18] <- "overload"
-efs$cat_mental_workload[efs$mental_workload >18] <- "extreme overload"
-cbind(table(efs$cat_mental_workload),prop.table(table(efs$cat_mental_workload)))
+summary(breastCancer)
+numSummary(breastCancer$Age_at_diagnosis)
+numSummary(breastCancer$Regional_nodes_positive_(1988+))
+numSummary(breastCancer$CS_tumor_size_(2004-2015))
+numSummary(breastCancer$Regional_nodes_examined_(1988+))
+numSummary(breastCancer$interva_years)
 
-mwl$con_mental_workload <- mwl$mental_workload*5
-```
-<!-- nasa$cat_mental <- nasa$mental -->
-<!-- nasa$cat_mental[nasa$mental <=2] <- "low" -->
-<!-- nasa$cat_mental[nasa$mental >2 & nasa$mental <=7] <- "low" -->
-<!-- nasa$cat_mental[nasa$mental >7 & nasa$mental <=13] <- "moderate" -->
-<!-- nasa$cat_mental[nasa$mental >13 & nasa$mental <=18] <- "high" -->
-<!-- nasa$cat_mental[nasa$mental >18] <- "very high" -->
-
-<!-- nasa$cat_physical <- nasa$physical -->
-<!-- nasa$cat_physical[nasa$physical <=2] <- "very low" -->
-<!-- nasa$cat_physical[nasa$physical >2 & nasa$physical <=7] <- "low" -->
-<!-- nasa$cat_physical[nasa$physical >7 & nasa$physical <=13] <- "moderate" -->
-<!-- nasa$cat_physical[nasa$physical >13 & nasa$physical <=18] <- "high" -->
-<!-- nasa$cat_physical[nasa$physical >18] <- "very high" -->
-
-<!-- nasa$cat_temporal <- nasa$temporal -->
-<!-- nasa$cat_temporal[nasa$temporal <=2] <- "very low" -->
-<!-- nasa$cat_temporal[nasa$temporal >2 & nasa$temporal <=7] <- "low" -->
-<!-- nasa$cat_temporal[nasa$temporal >7 & nasa$temporal <=13] <- "moderate" -->
-<!-- nasa$cat_temporal[nasa$temporal >13 & nasa$temporal <=18] <- "high" -->
-<!-- nasa$cat_temporal[nasa$temporal >18] <- "very high" -->
-
-<!-- nasa$cat_performance <- nasa$performance -->
-<!-- nasa$cat_performance[nasa$performance <=2] <- "perfect" -->
-<!-- nasa$cat_performance[nasa$performance >2 & nasa$performance <=7] <- "good" -->
-<!-- nasa$cat_performance[nasa$performance >7 & nasa$performance <=13] <- "moderate" -->
-<!-- nasa$cat_performance[nasa$performance >13 & nasa$performance <=18] <- "not good" -->
-<!-- nasa$cat_performance[nasa$performance >18] <- "failure" -->
-
-<!-- nasa$cat_frustration <- nasa$frustration -->
-<!-- nasa$cat_frustration[nasa$frustration <=2] <- "very low" -->
-<!-- nasa$cat_frustration[nasa$frustration >2 & nasa$frustration <=7] <- "low" -->
-<!-- nasa$cat_frustration[nasa$frustration >7 & nasa$frustration <=13] <- "moderate" -->
-<!-- nasa$cat_frustration[nasa$frustration >13 & nasa$frustration <=18] <- "high" -->
-<!-- nasa$cat_frustration[nasa$frustration >18] <- "very high" -->
-
-<!-- nasa$cat_effort <- nasa$effort -->
-<!-- nasa$cat_effort[nasa$effort <=2] <- "very low" -->
-<!-- nasa$cat_effort[nasa$effort >2 & nasa$effort <=7] <- "low" -->
-<!-- nasa$cat_effort[nasa$effort >7 & nasa$effort <=13] <- "moderate" -->
-<!-- nasa$cat_effort[nasa$effort >13 & nasa$effort <=18] <- "high" -->
-<!-- nasa$cat_effort[nasa$effort >18] <- "very high" -->
-
+<!
 ```{r normality}
 # Creating graphs
 gg <- ggplot(nasa, aes(x=nasa$con_mental_workload))
@@ -263,6 +142,7 @@ q2 <- qplot(x = con_mental_workload, data = nasa_sub, colour=I("blue"), fill=I("
   ) +
   theme(axis.line = element_line(color = 'blue'))
 grid.arrange(q1, q2, ncol=1)
+-->
 
 count_nasaMWL <- table(nasa$cat_mental_workload)
 barplot(count_nasaMWL)
@@ -359,6 +239,30 @@ shapiro.test(log(nasa$con_mental_workload))
 shapiro.test(sqrt(nasa$con_mental_workload))
 hist(sqrt(nasa$con_mental_workload))
 #kolmogorov-smirnov
+```
+
+```{correlation}
+## Correlation of outcome and predictor (nominal and nominal)
+crosstable(breastCancer$cat_status_studyCutoff, beastCancer$cat_status_5y, fisher=TRUE, chisq=TRUE, expected=TRUE)
+crosstable(breastCancer$Total_number_of_in_situ/malignant_tumors_for_patient, beastCancer$cat_status_5y, fisher=TRUE, chisq=TRUE, expected=TRUE)
+crosstable(breastCancer$, beastCancer$cat_status_5y, fisher=TRUE, chisq=TRUE, expected=TRUE)
+crosstable(breastCancer$, beastCancer$cat_status_5y, fisher=TRUE, chisq=TRUE, expected=TRUE)
+crosstable(breastCancer$, beastCancer$cat_status_5y, fisher=TRUE, chisq=TRUE, expected=TRUE)
+crosstable(breastCancer$, beastCancer$cat_status_5y, fisher=TRUE, chisq=TRUE, expected=TRUE)
+crosstable(breastCancer$, beastCancer$cat_status_5y, fisher=TRUE, chisq=TRUE, expected=TRUE)
+crosstable(breastCancer$, beastCancer$cat_status_5y, fisher=TRUE, chisq=TRUE, expected=TRUE)
+crosstable(breastCancer$, beastCancer$cat_status_5y, fisher=TRUE, chisq=TRUE, expected=TRUE)
+crosstable(breastCancer$, beastCancer$cat_status_5y, fisher=TRUE, chisq=TRUE, expected=TRUE)
+crosstable(breastCancer$, beastCancer$cat_status_5y, fisher=TRUE, chisq=TRUE, expected=TRUE)
+crosstable(breastCancer$, beastCancer$cat_status_5y, fisher=TRUE, chisq=TRUE, expected=TRUE)
+crosstable(breastCancer$, beastCancer$cat_status_5y, fisher=TRUE, chisq=TRUE, expected=TRUE)
+
+## Correlation of outcome and predictor (nominal and scale) # if scale is parametric (normal distribution)
+leveneTest(Age_at_diagnosis~cat_status_5y, data=breastCancer)
+t.test(Age_at_diagnosis~cat_status_5y, var.equal=TRUE, data=breastCancer)
+
+## Correlation of outcome and predictor (nominal and ordinal) # if scale is nonparametric (not normal distribution)
+wilcox.test(breastCancer$cat_status_5y~breastCancer$Age_at_diagnosis)
 ```
 
 ```{r train & test set}
