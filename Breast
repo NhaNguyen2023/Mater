@@ -8,8 +8,9 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-# Load file
-```{r}
+
+```{r load working space}
+# Load environment
 rm(list = ls())
 library(readr)
 library('dplyr')
@@ -22,19 +23,18 @@ library(gridExtra)  #graph
 library(car)  #Scatterplot matrix
 library(gmodels)  #Evaluate the model, chi square correlation
 library(Hmisc)  #Imputate missing values
-# library(DMwR) #Compute the accuracy of imputation, but need to install the other packages
+#library(DMwR) #Compute the accuracy of imputation, but need to install the other packages
 library(stats)  #multiple regression lm() function, lapply function
 library(PerformanceAnalytics) #chart.Correlation (Scatterplot)
 library(C50)
 library(dataQualityR)
-
 library(AppliedPredictiveModeling)  #Scatterplot
 library(caret)  #classification & regression training
 
+# Load file
 breast <- read_csv("~/U/DataMgmt_Breast/BreastCancer_Query_5_years.csv")
-
 write_csv(breast[,c("status","scale")],"~/U/DataMgmt_Breast/breastCancer.csv")
-# write_csv(breast_append[,c("status","scale")],"~/...",append = T)
+#write_csv(breast_append[,c("status","scale")],"~/...",append = T)
 head(read_csv("~/U/DataMgmt_Breast/breastCancer.csv"))
 breastCancer <- read_csv("~/U/DataMgmt_Breast/breastCancer.csv")
 ```
@@ -46,16 +46,19 @@ str(breastCancer)
 head(breastCancer)
 any(is.na(breastCancer))
 colSums(is.na(breastCancer))
+breastCancer$Parameter <- str_replace_all(breastCancer$Parameter, c(" " = "_"))
+print(breastCancer)
 ```
 
 
 ```{r transformation}
 # Transforming data
-breastCancer$Parameter <- str_replace_all(breastCancer$Parameter, c(" " = "_"))
 
+## Outcome description
 breastCancer$cat_status_5y <- breastCancer$stutus_5_years
 breastCancer$cat_status_studyCutoff <- breastCancer$Vital_status_recode_(study_cutoff_used)
 
+## Predictor description (categorical)
 print (is.factor(breastCancer$Total_number_of_in_situ/malignant_tumors_for_patient)
 print (is.factor(breastCancer$Radiation_recode)
 print (is.factor(breastCancer$Radiation_sequence_with_surgery)
@@ -63,11 +66,11 @@ print (is.factor(breastCancer$COD_to_site_recode)
 print (is.factor(breastCancer$Race)
 print (is.factor(breastCancer$Diagnosis_year)
 print (is.factor(breastCancer$Last_fu_year)
-print (is.factor(breastCancer$interva_years)
 
-# if not factor, apply the factor function
+## if not factor, apply the factor function
 breastCancer$factor_totalMalignantTumors <- factor(breastCancer$Total_number_of_in_situ/malignant_tumors_for_patient)
 
+## Transform categorical to numeric for running model if necessary
 <!
 breastCancer$cat_HER2 <- breastCancer$Derived_HER2_Recode_(2010+)
 breastCancer$con_HER2[breastCancer$cat_HER2 = "Positive"] <- 3
@@ -76,6 +79,7 @@ breastCancer$con_HER2[breastCancer$cat_HER2 = "Unknown"] <- 1
 breastCancer$con_HER2[breastCancer$cat_HER2 = "Negative"] <- 0
 -->
 
+## Data frame for nominal/ binary values of variables
 cbind(table(breastCancer$cat_status_5y),prop.table(table(breastCancer$cat_status_5y)))
 cbind(table(breastCancer$cat_status_studyCutoff),prop.table(table(breastCancer$cat_status_studyCutoff)))
 cbind(table(breastCancer$),prop.table(table(breastCancer$)))
@@ -95,6 +99,7 @@ prop.table(breastCancer)
 cat("# # # The combined data table\n") # print a header
 print(breastCancer_tab) # print the result
 
+## Predictor description (numeric)
 summary(breastCancer)
 numSummary(breastCancer$Age_at_diagnosis)
 numSummary(breastCancer$Regional_nodes_positive_(1988+))
@@ -102,27 +107,33 @@ numSummary(breastCancer$CS_tumor_size_(2004-2015))
 numSummary(breastCancer$Regional_nodes_examined_(1988+))
 numSummary(breastCancer$interva_years)
 
-<!
+
 ```{r normality}
 # Creating graphs
-gg <- ggplot(nasa, aes(x=nasa$con_mental_workload))
-gg <- gg + labs(x = "Mental workload score")
+count_status_5y <- table(breastCancer$cat_status_5y)
+barplot(count_status_5y)
+
+count_vital_status <- table(breastCancer$cat_status_studyCutoff)
+barplot(count_vital_status)
+
+gg <- ggplot(breastCancer, aes(x=breastCancer$Age_at_diagnosis))
+gg <- gg + labs(x = "Age at diagnosis")
 gg <- gg + geom_histogram(binwidth=2, colour="black", aes(y=..density..,fill=..count..))
 gg <- gg + scale_fill_gradient("Count", low="#DCDCDC", high="#7C7C7C")
-gg <- gg + stat_function(fun=dnorm, color="red",args=list(mean=mean(nasa$con_mental_workload,na.rm = T), sd=sd(nasa$con_mental_workload,na.rm = T)))
+gg <- gg + stat_function(fun=dnorm, color="red",args=list(mean=mean(breastCancer$Age_at_diagnosis,na.rm = T), sd=sd(breastCancer$Age_at_diagnosis,na.rm = T)))
 gg
-qqnorm(nasa$con_mental_workload)
-qqline(nasa$con_mental_workload, col=2)
-boxplot(nasa$con_mental_workload)
-skewness((nasa$con_mental_workload),na.rm = T)
-kurtosis((nasa$con_mental_workload),na.rm = T)
+qqnorm(breastCancer$Age_at_diagnosis)
+qqline(breastCancer$Age_at_diagnosis, col=2)
+boxplot(breastCancer$Age_at_diagnosis)
+skewness((breastCancer$Age_at_diagnosis),na.rm = T)
+kurtosis((breastCancer$Age_at_diagnosis),na.rm = T)
 
-nasa_sub <- nasa
-cutoffabove_nasa <- 55 + 1.5*IQR(nasa$con_mental_workload,na.rm = T)
-cutoffbelow_nasa <- 55 - 1.5*IQR(nasa$con_mental_workload,na.rm = T)
-nasa_sub <- subset(nasa, con_mental_workload <= cutoffabove_nasa & con_mental_workload >= cutoffbelow_nasa)
-summary(nasa_sub$con_mental_workload)
-q1 <- qplot(x = con_mental_workload, data = nasa, colour=I("red"), fill=I("white")) +
+breastCancer_sub <- breastCancer
+cutoffabove_breastCancer <- 50 + 1.5*IQR(breastCancer$Age_at_diagnosis,na.rm = T)
+cutoffbelow_breastCancer <- 50 - 1.5*IQR(breastCancer$Age_at_diagnosis,na.rm = T)
+breastCancer_sub <- subset(breastCancer, Age_at_diagnosis <= cutoffabove_breastCancer & Age_at_diagnosis >= cutoffbelow_breastCancer)
+summary(breastCancer_sub$Age_at_diagnosis)
+q1 <- qplot(x = Age_at_diagnosis, data = breastCancer, colour=I("red"), fill=I("white")) +
   theme_bw() +
   theme(
     plot.background = element_blank()
@@ -131,50 +142,7 @@ q1 <- qplot(x = con_mental_workload, data = nasa, colour=I("red"), fill=I("white
     ,panel.border = element_blank()
   ) +
   theme(axis.line = element_line(color = 'red'))
-q2 <- qplot(x = con_mental_workload, data = nasa_sub, colour=I("blue"), fill=I("white")) + 
-  scale_x_continuous(limits = c(25,85)) +
-  theme_bw() +
-  theme(
-    plot.background = element_blank()
-    ,panel.grid.major = element_blank()
-    ,panel.grid.minor = element_blank()
-    ,panel.border = element_blank()
-  ) +
-  theme(axis.line = element_line(color = 'blue'))
-grid.arrange(q1, q2, ncol=1)
--->
-
-count_nasaMWL <- table(nasa$cat_mental_workload)
-barplot(count_nasaMWL)
-
-
-gg <- ggplot(wp, aes(x=wp$con_mental_workload))
-gg <- gg + labs(x = "Mental workload score")
-gg <- gg + geom_histogram(binwidth=2, colour="black", aes(y=..density..,fill=..count..))
-gg <- gg + scale_fill_gradient("Count", low="#DCDCDC", high="#7C7C7C")
-gg <- gg + stat_function(fun=dnorm, color="red",args=list(mean=mean(wp$con_mental_workload,na.rm = T), sd=sd(wp$con_mental_workload,na.rm = T)))
-gg
-qqnorm(wp$con_mental_workload)
-qqline(wp$con_mental_workload, col=2)
-boxplot(wp$con_mental_workload)
-skewness((wp$con_mental_workload),na.rm = T)
-kurtosis((wp$con_mental_workload),na.rm = T)
-
-wp_sub <- wp
-cutoffabove_wp <- 50 + 1.5*IQR(wp$con_mental_workload,na.rm = T)
-cutoffbelow_wp <- 50 - 1.5*IQR(wp$con_mental_workload,na.rm = T)
-wp_sub <- subset(wp, con_mental_workload <= cutoffabove_wp & con_mental_workload >= cutoffbelow_wp)
-summary(wp_sub$con_mental_workload)
-q3 <- qplot(x = con_mental_workload, data = wp, colour=I("red"), fill=I("white")) +
-  theme_bw() +
-  theme(
-    plot.background = element_blank()
-    ,panel.grid.major = element_blank()
-    ,panel.grid.minor = element_blank()
-    ,panel.border = element_blank()
-  ) +
-  theme(axis.line = element_line(color = 'red'))
-q4 <- qplot(x = con_mental_workload, data = wp_sub, colour=I("blue"), fill=I("white")) + 
+q2 <- qplot(x = Age_at_diagnosis, data = breastCancer_sub, colour=I("blue"), fill=I("white")) + 
   scale_x_continuous(limits = c(12.5,87.5)) +
   theme_bw() +
   theme(
@@ -184,10 +152,8 @@ q4 <- qplot(x = con_mental_workload, data = wp_sub, colour=I("blue"), fill=I("wh
     ,panel.border = element_blank()
   ) +
   theme(axis.line = element_line(color = 'blue'))
-grid.arrange(q3, q4, ncol=1)
+grid.arrange(q1, q2, ncol=1)
 
-# count_wpMWL <- table(wp$cat_mental_workload)
-# barplot(count_wpMWL)
 
 
 gg <- ggplot(efs, aes(x=efs$con_mental_workload))
@@ -228,8 +194,6 @@ q6 <- qplot(x = con_mental_workload, data = efs_sub, colour=I("blue"), fill=I("w
   theme(axis.line = element_line(color = 'blue'))
 grid.arrange(q5, q6, ncol=1)
 
-# count_efsMWL <- table(efs$cat_mental_workload)
-# barplot(count_efsMWL)
 
 shapiro.test(nasa$con_mental_workload)
 shapiro.test(wp$con_mental_workload)
