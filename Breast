@@ -12,6 +12,11 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r load working space}
 # Load environment
 rm(list = ls())
+print(getwd())
+setwd("C:/Users/User/Documents/RStudio")
+print(getwd())
+
+library(stringr)
 library(readr)
 library('dplyr')
 library(ggplot2)
@@ -32,11 +37,31 @@ library(AppliedPredictiveModeling)  #Scatterplot
 library(caret)  #classification & regression training
 
 # Load file
-breast <- read_csv("~/U/DataMgmt_Breast/BreastCancer_Query_5_years.csv")
-write_csv(breast[,c("status","scale")],"~/U/DataMgmt_Breast/breastCancer.csv")
-#write_csv(breast_append[,c("status","scale")],"~/...",append = T)
-head(read_csv("~/U/DataMgmt_Breast/breastCancer.csv"))
-breastCancer <- read_csv("~/U/DataMgmt_Breast/breastCancer.csv")
+breast <- read.csv("BreastCancer_Query_5_years.csv")
+print(breast)
+print(is.data.frame(breast))
+
+# Input variables
+breast$cat_status_5y <- breast$stutus_5_years
+breast$cat_status_studyCutoff <- breast$Vital.status.recode..study.cutoff.used.
+
+breast$age_diagnosis <- breast$Age.at.diagnosis
+breast$regional_nodes_positive <- breast$Regional.nodes.positive..1988..
+breast$number_malignant_tumors <- breast$Total.number.of.in.situ.malignant.tumors.for.patient
+breast$radiation <- breast$Radiation.recode
+breast$chemotherapy <- breast$Chemotherapy.recode
+breast$radiation_sequence_surgery <- breast$Radiation.sequence.with.surgery
+breast$ER_status <- breast$ER.Status.Recode.Breast.Cancer..1990..
+breast$PR_status <- breast$PR.Status.Recode.Breast.Cancer..1990..
+breast$CS_tumor_size <- breast$CS.tumor.size..2004.2015.
+breast$HER2 <- breast$Derived.HER2.Recode..2010..
+breast$regional_nodes_examined <- breast$Regional.nodes.examined..1988..
+breast$cause_of_death <- breast$COD.to.site.recode
+breast$race <- breast$Race.recode
+
+write.csv(breast[,c("cat_status_5y","cat_status_studyCutoff","age_diagnosis","regional_nodes_positive","number_malignant_tumors","radiation","chemotherapy","radiation_sequence_surgery","ER_status","PR_status","CS_tumor_size","HER2","regional_nodes_examined","cause_of_death","race","Sex","Diagnosis_year","Last_fu._year","interva_years")],"breastCancer.csv")
+breastCancer <- read.csv("breastCancer.csv")
+summary(breastCancer)
 ```
 
 
@@ -46,7 +71,6 @@ str(breastCancer)
 head(breastCancer)
 any(is.na(breastCancer))
 colSums(is.na(breastCancer))
-breastCancer$Parameter <- str_replace_all(breastCancer$Parameter, c(" " = "_"))
 print(breastCancer)
 ```
 
@@ -82,16 +106,18 @@ breastCancer$con_HER2[breastCancer$cat_HER2 = "Negative"] <- 0
 ## Data frame for nominal/ binary values of variables
 cbind(table(breastCancer$cat_status_5y),prop.table(table(breastCancer$cat_status_5y)))
 cbind(table(breastCancer$cat_status_studyCutoff),prop.table(table(breastCancer$cat_status_studyCutoff)))
-cbind(table(breastCancer$),prop.table(table(breastCancer$)))
-cbind(table(breastCancer$),prop.table(table(breastCancer$)))
-cbind(table(breastCancer$),prop.table(table(breastCancer$)))
-cbind(table(breastCancer$),prop.table(table(breastCancer$)))
-cbind(table(breastCancer$),prop.table(table(breastCancer$)))
-cbind(table(breastCancer$),prop.table(table(breastCancer$)))
-cbind(table(breastCancer$),prop.table(table(breastCancer$)))
-cbind(table(breastCancer$),prop.table(table(breastCancer$)))
-cbind(table(breastCancer$),prop.table(table(breastCancer$)))
-cbind(table(breastCancer$),prop.table(table(breastCancer$)))
+cbind(table(breastCancer$radiation),prop.table(table(breastCancer$radiation)))
+cbind(table(breastCancer$chemotherapy),prop.table(table(breastCancer$chemotherapy)))
+cbind(table(breastCancer$radiation_sequence_surgery),prop.table(table(breastCancer$radiation_sequence_surgery)))
+cbind(table(breastCancer$ER_status),prop.table(table(breastCancer$ER_status)))
+cbind(table(breastCancer$PR_status),prop.table(table(breastCancer$PR_status)))
+cbind(table(breastCancer$CS_tumor_size),prop.table(table(breastCancer$CS_tumor_size)))
+cbind(table(breastCancer$HER2),prop.table(table(breastCancer$HER2)))
+cbind(table(breastCancer$cause_of_death),prop.table(table(breastCancer$cause_of_death)))
+cbind(table(breastCancer$race),prop.table(table(breastCancer$race)))
+cbind(table(breastCancer$Sex),prop.table(table(breastCancer$Sex)))
+cbind(table(breastCancer$Diagnosis_year),prop.table(table(breastCancer$Diagnosis_year)))
+cbind(table(breastCancer$Last_fu._year),prop.table(table(breastCancer$Last_fu._year)))
 breastCancer_tab <- table(breastCancer$, breastCancer$,)
 addmargins(breastCancer)
 prop.table(breastCancer)
