@@ -18,12 +18,13 @@ print(getwd())
 
 library(stringr)
 library(readr)
-library('dplyr')
+library(tidyverse) #table (frequency and proportion), install.packages("tidyverse")
+library(dplyr) # install.packages("dplyr")
 library(ggplot2)
 library(sqldf)
-library("Rcmdr")  #continuous var
+library(Rcmdr)  #continuous var, numSummary function, install.packages("RCmdr")
 library(moments)  #skewness,kurtosis
-library("plyr")   #categorical var
+library("plyr")   #categorical var, install.packages("plyr")
 library(gridExtra)  #graph
 library(car)  #Scatterplot matrix
 library(gmodels)  #Evaluate the model, chi square correlation
@@ -104,37 +105,39 @@ breastCancer$con_HER2[breastCancer$cat_HER2 = "Negative"] <- 0
 -->
 
 ## Data frame for nominal/ binary values of variables
+options(digits=2)
 cbind(table(breastCancer$cat_status_5y),prop.table(table(breastCancer$cat_status_5y)))
 cbind(table(breastCancer$cat_status_studyCutoff),prop.table(table(breastCancer$cat_status_studyCutoff)))
-cbind(table(breastCancer$radiation),prop.table(table(breastCancer$radiation)))
-cbind(table(breastCancer$chemotherapy),prop.table(table(breastCancer$chemotherapy)))
-cbind(table(breastCancer$radiation_sequence_surgery),prop.table(table(breastCancer$radiation_sequence_surgery)))
-cbind(table(breastCancer$ER_status),prop.table(table(breastCancer$ER_status)))
-cbind(table(breastCancer$PR_status),prop.table(table(breastCancer$PR_status)))
-cbind(table(breastCancer$CS_tumor_size),prop.table(table(breastCancer$CS_tumor_size)))
-cbind(table(breastCancer$HER2),prop.table(table(breastCancer$HER2)))
-cbind(table(breastCancer$cause_of_death),prop.table(table(breastCancer$cause_of_death)))
-cbind(table(breastCancer$race),prop.table(table(breastCancer$race)))
-cbind(table(breastCancer$Sex),prop.table(table(breastCancer$Sex)))
-cbind(table(breastCancer$Diagnosis_year),prop.table(table(breastCancer$Diagnosis_year)))
-cbind(table(breastCancer$Last_fu._year),prop.table(table(breastCancer$Last_fu._year)))
-breastCancer_tab <- table(breastCancer$, breastCancer$,)
-addmargins(breastCancer)
-prop.table(breastCancer)
+cbind(table(breastCancer$radiation),prop.table(table(breastCancer$radiation)),sort(breastCancer$radiation, decreasing=TRUE, na.last=TRUE, index.return=FALSE))
+cbind(table(breastCancer$chemotherapy),prop.table(table(breastCancer$chemotherapy)),sort(breastCancer$chemotherapy, decreasing=TRUE, na.last=TRUE, index.return=FALSE))
+cbind(table(breastCancer$radiation_sequence_surgery),prop.table(table(breastCancer$radiation_sequence_surgery)),sort(breastCancer$radiation_sequence_surgery, decreasing=TRUE, na.last=TRUE, index.return=FALSE))
+cbind(table(breastCancer$ER_status),prop.table(table(breastCancer$ER_status)),sort(breastCancer$ER_status, decreasing=TRUE, na.last=TRUE, index.return=FALSE))
+cbind(table(breastCancer$PR_status),prop.table(table(breastCancer$PR_status)),sort(breastCancer$PR_status, decreasing=TRUE, na.last=TRUE, index.return=FALSE))
+cbind(table(breastCancer$CS_tumor_size),prop.table(table(breastCancer$CS_tumor_size)),sort(breastCancer$CS_tumor_size, decreasing=TRUE, na.last=TRUE, index.return=FALSE))
+cbind(table(breastCancer$HER2),prop.table(table(breastCancer$HER2)),sort(breastCancer$HER2, decreasing=TRUE, na.last=TRUE, index.return=FALSE))
+cbind(table(breastCancer$cause_of_death),prop.table(table(breastCancer$cause_of_death)),sort(breastCancer$cause_of_death, decreasing=TRUE, na.last=TRUE, index.return=FALSE))
+cbind(table(breastCancer$race),prop.table(table(breastCancer$race)),sort(breastCancer$race, decreasing=TRUE, na.last=TRUE, index.return=FALSE))
+cbind(table(breastCancer$Sex),prop.table(table(breastCancer$Sex)),sort(breastCancer$Sex, decreasing=TRUE, na.last=TRUE, index.return=FALSE))
+cbind(table(breastCancer$Diagnosis_year),prop.table(table(breastCancer$Diagnosis_year)),sort(breastCancer$Diagnosis_year, decreasing=TRUE, na.last=TRUE, index.return=FALSE))
+cbind(table(breastCancer$Last_fu._year),prop.table(table(breastCancer$Last_fu._year)),sort(breastCancer$Last_fu._year, decreasing=TRUE, na.last=TRUE, index.return=FALSE))
+
+breastCancer_tab <- cbind(table(breastCancer$cat_status_5y,breastCancer$cat_status_studyCutoff),prop.table(table(breastCancer$cat_status_5y,breastCancer$cat_status_studyCutoff)),breastCancer[order(breastCancer$cat_status_studyCutoff),])
+addmargins(breastCancer_tab)
+prop.table(breastCancer_tab)
 
 cat("# # # The combined data table\n") # print a header
 print(breastCancer_tab) # print the result
 
 ## Predictor description (numeric)
 summary(breastCancer)
-numSummary(breastCancer$Age_at_diagnosis)
-numSummary(breastCancer$Regional_nodes_positive_(1988+))
-numSummary(breastCancer$CS_tumor_size_(2004-2015))
-numSummary(breastCancer$Regional_nodes_examined_(1988+))
-numSummary(breastCancer$interva_years)
+numSummary(breastCancer$age_diagnosis, statistics=c("mean", "sd", "IQR", "quantiles", "cv", "skewness", "kurtosis"), type=c("2", "1", "3"), quantiles=c(0, .25, .5, .75, 1), groups)
+numSummary(breastCancer$)
+numSummary(breastCancer$)
+numSummary(breastCancer$)
+numSummary(breastCancer$)
 
 
-```{r normality}
+```{r plot}
 # Creating graphs
 count_status_5y <- table(breastCancer$cat_status_5y)
 barplot(count_status_5y)
@@ -142,17 +145,17 @@ barplot(count_status_5y)
 count_vital_status <- table(breastCancer$cat_status_studyCutoff)
 barplot(count_vital_status)
 
-gg <- ggplot(breastCancer, aes(x=breastCancer$Age_at_diagnosis))
+gg <- ggplot(breastCancer, aes(x=breastCancer$age_diagnosis))
 gg <- gg + labs(x = "Age at diagnosis")
 gg <- gg + geom_histogram(binwidth=2, colour="black", aes(y=..density..,fill=..count..))
 gg <- gg + scale_fill_gradient("Count", low="#DCDCDC", high="#7C7C7C")
-gg <- gg + stat_function(fun=dnorm, color="red",args=list(mean=mean(breastCancer$Age_at_diagnosis,na.rm = T), sd=sd(breastCancer$Age_at_diagnosis,na.rm = T)))
+gg <- gg + stat_function(fun=dnorm, color="red",args=list(mean=mean(breastCancer$age_diagnosis,na.rm = T), sd=sd(breastCancer$age_diagnosis,na.rm = T)))
 gg
-qqnorm(breastCancer$Age_at_diagnosis)
-qqline(breastCancer$Age_at_diagnosis, col=2)
-boxplot(breastCancer$Age_at_diagnosis)
-skewness((breastCancer$Age_at_diagnosis),na.rm = T)
-kurtosis((breastCancer$Age_at_diagnosis),na.rm = T)
+qqnorm(breastCancer$age_diagnosis)
+qqline(breastCancer$age_diagnosis, col=2)
+boxplot(breastCancer$age_diagnosis)
+skewness((breastCancer$age_diagnosis),na.rm = T)
+kurtosis((breastCancer$age_diagnosis),na.rm = T)
 
 breastCancer_sub <- breastCancer
 cutoffabove_breastCancer <- 50 + 1.5*IQR(breastCancer$Age_at_diagnosis,na.rm = T)
