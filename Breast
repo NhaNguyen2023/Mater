@@ -1,526 +1,11 @@
 ---
-title: "BreastCancer_Query_5_years"
-author: "NhaNguyen"
+title: "breastPatientsDetail"
 output: html_document
+date: "2024-02-07"
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-```
-
-
-```{r load working space}
-# Load environment
-rm(list = ls())
-print(getwd())
-setwd("C:/Users/User/Documents/RStudio")
-print(getwd())
-
-library(stringr)
-library(readr)
-library(tidyverse) #table (frequency and proportion), install.packages("tidyverse")
-library(dplyr) # install.packages("dplyr")
-library(ggplot2)
-library(sqldf)
-library(Rcmdr)  #continuous var, numSummary function, install.packages("RCmdr")
-library(moments)  #skewness,kurtosis
-library("plyr")   #categorical var, install.packages("plyr")
-library(gridExtra)  #graph
-library(car)  #Scatterplot matrix
-library(gmodels)  #Evaluate the model, chi square correlation
-library(Hmisc)  #Imputate missing values
-#library(DMwR) #Compute the accuracy of imputation, but need to install the other packages
-library(stats)  #multiple regression lm() function, lapply function
-library(PerformanceAnalytics) #chart.Correlation (Scatterplot)
-library(C50)
-library(dataQualityR)
-library(AppliedPredictiveModeling)  #Scatterplot
-library(caret)  #classification & regression training
-
-# Load file
-breast <- read.csv("BreastCancer_Query_5_years.csv")
-print(breast)
-print(is.data.frame(breast))
-
-# Input variables
-breast$cat_status_5y <- breast$stutus_5_years
-breast$cat_status_studyCutoff <- breast$Vital.status.recode..study.cutoff.used.
-
-breast$age_diagnosis <- breast$Age.at.diagnosis
-breast$regional_nodes_positive <- breast$Regional.nodes.positive..1988..
-breast$number_malignant_tumors <- breast$Total.number.of.in.situ.malignant.tumors.for.patient
-breast$radiation <- breast$Radiation.recode
-breast$chemotherapy <- breast$Chemotherapy.recode
-breast$radiation_sequence_surgery <- breast$Radiation.sequence.with.surgery
-breast$ER_status <- breast$ER.Status.Recode.Breast.Cancer..1990..
-breast$PR_status <- breast$PR.Status.Recode.Breast.Cancer..1990..
-breast$CS_tumor_size <- breast$CS.tumor.size..2004.2015.
-breast$HER2 <- breast$Derived.HER2.Recode..2010..
-breast$regional_nodes_examined <- breast$Regional.nodes.examined..1988..
-breast$cause_of_death <- breast$COD.to.site.recode
-breast$race <- breast$Race.recode
-
-write.csv(breast[,c("cat_status_5y","cat_status_studyCutoff","age_diagnosis","regional_nodes_positive","number_malignant_tumors","radiation","chemotherapy","radiation_sequence_surgery","ER_status","PR_status","CS_tumor_size","HER2","regional_nodes_examined","cause_of_death","race","Sex","Diagnosis_year","Last_fu._year","interva_years")],"breastCancer.csv")
-breastCancer <- read.csv("breastCancer.csv")
-summary(breastCancer)
-```
-
-
-```{r inspection}
-# Inspecting data
-str(breastCancer)
-head(breastCancer)
-any(is.na(breastCancer))
-colSums(is.na(breastCancer))
-print(breastCancer)
-```
-
-
-```{r transformation}
-# Transforming data
-
-## Outcome description
-breastCancer$cat_status_5y <- breastCancer$stutus_5_years
-breastCancer$cat_status_studyCutoff <- breastCancer$Vital_status_recode_(study_cutoff_used)
-
-## Predictor description (categorical)
-print (is.factor(breastCancer$Total_number_of_in_situ/malignant_tumors_for_patient)
-print (is.factor(breastCancer$Radiation_recode)
-print (is.factor(breastCancer$Radiation_sequence_with_surgery)
-print (is.factor(breastCancer$COD_to_site_recode)
-print (is.factor(breastCancer$Race)
-print (is.factor(breastCancer$Diagnosis_year)
-print (is.factor(breastCancer$Last_fu_year)
-
-## if not factor, apply the factor function
-breastCancer$factor_totalMalignantTumors <- factor(breastCancer$Total_number_of_in_situ/malignant_tumors_for_patient)
-
-## Transform categorical to numeric for running model if necessary
-<!
-breastCancer$cat_HER2 <- breastCancer$Derived_HER2_Recode_(2010+)
-breastCancer$con_HER2[breastCancer$cat_HER2 = "Positive"] <- 3
-breastCancer$con_HER2[breastCancer$cat_HER2 = "Boderline"] <- 2
-breastCancer$con_HER2[breastCancer$cat_HER2 = "Unknown"] <- 1
-breastCancer$con_HER2[breastCancer$cat_HER2 = "Negative"] <- 0
--->
-
-## Data frame for nominal/ binary values of variables
-options(digits=2)
-cbind(table(breastCancer$cat_status_5y),prop.table(table(breastCancer$cat_status_5y)))
-cbind(table(breastCancer$cat_status_studyCutoff),prop.table(table(breastCancer$cat_status_studyCutoff)))
-cbind(table(breastCancer$radiation),prop.table(table(breastCancer$radiation)),sort(breastCancer$radiation, decreasing=TRUE, na.last=TRUE, index.return=FALSE))
-cbind(table(breastCancer$chemotherapy),prop.table(table(breastCancer$chemotherapy)),sort(breastCancer$chemotherapy, decreasing=TRUE, na.last=TRUE, index.return=FALSE))
-cbind(table(breastCancer$radiation_sequence_surgery),prop.table(table(breastCancer$radiation_sequence_surgery)),sort(breastCancer$radiation_sequence_surgery, decreasing=TRUE, na.last=TRUE, index.return=FALSE))
-cbind(table(breastCancer$ER_status),prop.table(table(breastCancer$ER_status)),sort(breastCancer$ER_status, decreasing=TRUE, na.last=TRUE, index.return=FALSE))
-cbind(table(breastCancer$PR_status),prop.table(table(breastCancer$PR_status)),sort(breastCancer$PR_status, decreasing=TRUE, na.last=TRUE, index.return=FALSE))
-cbind(table(breastCancer$CS_tumor_size),prop.table(table(breastCancer$CS_tumor_size)),sort(breastCancer$CS_tumor_size, decreasing=TRUE, na.last=TRUE, index.return=FALSE))
-cbind(table(breastCancer$HER2),prop.table(table(breastCancer$HER2)),sort(breastCancer$HER2, decreasing=TRUE, na.last=TRUE, index.return=FALSE))
-cbind(table(breastCancer$cause_of_death),prop.table(table(breastCancer$cause_of_death)),sort(breastCancer$cause_of_death, decreasing=TRUE, na.last=TRUE, index.return=FALSE))
-cbind(table(breastCancer$race),prop.table(table(breastCancer$race)),sort(breastCancer$race, decreasing=TRUE, na.last=TRUE, index.return=FALSE))
-cbind(table(breastCancer$Sex),prop.table(table(breastCancer$Sex)),sort(breastCancer$Sex, decreasing=TRUE, na.last=TRUE, index.return=FALSE))
-cbind(table(breastCancer$Diagnosis_year),prop.table(table(breastCancer$Diagnosis_year)),sort(breastCancer$Diagnosis_year, decreasing=TRUE, na.last=TRUE, index.return=FALSE))
-cbind(table(breastCancer$Last_fu._year),prop.table(table(breastCancer$Last_fu._year)),sort(breastCancer$Last_fu._year, decreasing=TRUE, na.last=TRUE, index.return=FALSE))
-
-breastCancer_tab <- cbind(table(breastCancer$cat_status_5y,breastCancer$cat_status_studyCutoff),prop.table(table(breastCancer$cat_status_5y,breastCancer$cat_status_studyCutoff)),breastCancer[order(breastCancer$cat_status_studyCutoff),])
-addmargins(breastCancer_tab)
-prop.table(breastCancer_tab)
-
-cat("# # # The combined data table\n") # print a header
-print(breastCancer_tab) # print the result
-
-## Predictor description (numeric)
-summary(breastCancer)
-numSummary(breastCancer$age_diagnosis, statistics=c("mean", "sd", "IQR", "quantiles", "cv", "skewness", "kurtosis"), type=c("2", "1", "3"), quantiles=c(0, .25, .5, .75, 1), groups)
-numSummary(breastCancer$)
-numSummary(breastCancer$)
-numSummary(breastCancer$)
-numSummary(breastCancer$)
-
-
-```{r plot}
-# Creating graphs
-count_status_5y <- table(breastCancer$cat_status_5y)
-barplot(count_status_5y)
-
-count_vital_status <- table(breastCancer$cat_status_studyCutoff)
-barplot(count_vital_status)
-
-gg <- ggplot(breastCancer, aes(x=breastCancer$age_diagnosis))
-gg <- gg + labs(x = "Age at diagnosis")
-gg <- gg + geom_histogram(binwidth=2, colour="black", aes(y=..density..,fill=..count..))
-gg <- gg + scale_fill_gradient("Count", low="#DCDCDC", high="#7C7C7C")
-gg <- gg + stat_function(fun=dnorm, color="red",args=list(mean=mean(breastCancer$age_diagnosis,na.rm = T), sd=sd(breastCancer$age_diagnosis,na.rm = T)))
-gg
-qqnorm(breastCancer$age_diagnosis)
-qqline(breastCancer$age_diagnosis, col=2)
-boxplot(breastCancer$age_diagnosis)
-skewness((breastCancer$age_diagnosis),na.rm = T)
-kurtosis((breastCancer$age_diagnosis),na.rm = T)
-
-breastCancer_sub <- breastCancer
-cutoffabove_breastCancer <- 50 + 1.5*IQR(breastCancer$Age_at_diagnosis,na.rm = T)
-cutoffbelow_breastCancer <- 50 - 1.5*IQR(breastCancer$Age_at_diagnosis,na.rm = T)
-breastCancer_sub <- subset(breastCancer, Age_at_diagnosis <= cutoffabove_breastCancer & Age_at_diagnosis >= cutoffbelow_breastCancer)
-summary(breastCancer_sub$Age_at_diagnosis)
-q1 <- qplot(x = Age_at_diagnosis, data = breastCancer, colour=I("red"), fill=I("white")) +
-  theme_bw() +
-  theme(
-    plot.background = element_blank()
-    ,panel.grid.major = element_blank()
-    ,panel.grid.minor = element_blank()
-    ,panel.border = element_blank()
-  ) +
-  theme(axis.line = element_line(color = 'red'))
-q2 <- qplot(x = Age_at_diagnosis, data = breastCancer_sub, colour=I("blue"), fill=I("white")) + 
-  scale_x_continuous(limits = c(12.5,87.5)) +
-  theme_bw() +
-  theme(
-    plot.background = element_blank()
-    ,panel.grid.major = element_blank()
-    ,panel.grid.minor = element_blank()
-    ,panel.border = element_blank()
-  ) +
-  theme(axis.line = element_line(color = 'blue'))
-grid.arrange(q1, q2, ncol=1)
-
-
-
-gg <- ggplot(efs, aes(x=efs$con_mental_workload))
-gg <- gg + labs(x = "Mental workload score")
-gg <- gg + geom_histogram(binwidth=2, colour="black", aes(y=..density..,fill=..count..))
-gg <- gg + scale_fill_gradient("Count", low="#DCDCDC", high="#7C7C7C")
-gg <- gg + stat_function(fun=dnorm, color="red",args=list(mean=mean(efs$con_mental_workload,na.rm = T), sd=sd(efs$con_mental_workload,na.rm = T)))
-gg
-qqnorm(efs$con_mental_workload)
-qqline(efs$con_mental_workload, col=2)
-boxplot(efs$con_mental_workload)
-skewness((efs$con_mental_workload),na.rm = T)
-kurtosis((efs$con_mental_workload),na.rm = T)
-
-efs_sub <- efs
-cutoffabove_efs <- 50 + 1.5*IQR(efs$con_mental_workload,na.rm = T)
-cutoffbelow_efs <- 50 - 1.5*IQR(efs$con_mental_workload,na.rm = T)
-efs_sub <- subset(efs, con_mental_workload <= cutoffabove_efs & con_mental_workload >= cutoffbelow_efs)
-summary(efs_sub$con_mental_workload)
-q5 <- qplot(x = con_mental_workload, data = efs, colour=I("red"), fill=I("white")) +
-  theme_bw() +
-  theme(
-    plot.background = element_blank()
-    ,panel.grid.major = element_blank()
-    ,panel.grid.minor = element_blank()
-    ,panel.border = element_blank()
-  ) +
-  theme(axis.line = element_line(color = 'red'))
-q6 <- qplot(x = con_mental_workload, data = efs_sub, colour=I("blue"), fill=I("white")) + 
-  scale_x_continuous(limits = c(12.5,87.5)) +
-  theme_bw() +
-  theme(
-    plot.background = element_blank()
-    ,panel.grid.major = element_blank()
-    ,panel.grid.minor = element_blank()
-    ,panel.border = element_blank()
-  ) +
-  theme(axis.line = element_line(color = 'blue'))
-grid.arrange(q5, q6, ncol=1)
-
-
-shapiro.test(nasa$con_mental_workload)
-shapiro.test(wp$con_mental_workload)
-shapiro.test(efs$con_mental_workload)
-
-shapiro.test(log(nasa$con_mental_workload))
-shapiro.test(sqrt(nasa$con_mental_workload))
-hist(sqrt(nasa$con_mental_workload))
-#kolmogorov-smirnov
-```
-
-```{correlation}
-## Correlation of outcome and predictor (nominal and nominal)
-crosstable(breastCancer$cat_status_studyCutoff, beastCancer$cat_status_5y, fisher=TRUE, chisq=TRUE, expected=TRUE)
-crosstable(breastCancer$Total_number_of_in_situ/malignant_tumors_for_patient, beastCancer$cat_status_5y, fisher=TRUE, chisq=TRUE, expected=TRUE)
-crosstable(breastCancer$, beastCancer$cat_status_5y, fisher=TRUE, chisq=TRUE, expected=TRUE)
-crosstable(breastCancer$, beastCancer$cat_status_5y, fisher=TRUE, chisq=TRUE, expected=TRUE)
-crosstable(breastCancer$, beastCancer$cat_status_5y, fisher=TRUE, chisq=TRUE, expected=TRUE)
-crosstable(breastCancer$, beastCancer$cat_status_5y, fisher=TRUE, chisq=TRUE, expected=TRUE)
-crosstable(breastCancer$, beastCancer$cat_status_5y, fisher=TRUE, chisq=TRUE, expected=TRUE)
-crosstable(breastCancer$, beastCancer$cat_status_5y, fisher=TRUE, chisq=TRUE, expected=TRUE)
-crosstable(breastCancer$, beastCancer$cat_status_5y, fisher=TRUE, chisq=TRUE, expected=TRUE)
-crosstable(breastCancer$, beastCancer$cat_status_5y, fisher=TRUE, chisq=TRUE, expected=TRUE)
-crosstable(breastCancer$, beastCancer$cat_status_5y, fisher=TRUE, chisq=TRUE, expected=TRUE)
-crosstable(breastCancer$, beastCancer$cat_status_5y, fisher=TRUE, chisq=TRUE, expected=TRUE)
-crosstable(breastCancer$, beastCancer$cat_status_5y, fisher=TRUE, chisq=TRUE, expected=TRUE)
-
-## Correlation of outcome and predictor (nominal and scale) # if scale is parametric (normal distribution)
-leveneTest(Age_at_diagnosis~cat_status_5y, data=breastCancer)
-t.test(Age_at_diagnosis~cat_status_5y, var.equal=TRUE, data=breastCancer)
-
-## Correlation of outcome and predictor (nominal and ordinal) # if scale is nonparametric (not normal distribution)
-wilcox.test(breastCancer$cat_status_5y~breastCancer$Age_at_diagnosis)
-```
-
-```{r train & test set}
-
-## Impute values
-impute(nasa$con_mental_workload, median)
-nasa$con_mental_workload[is.na(nasa$con_mental_workload)] <- median(nasa$con_mental_workload, na.rm = T)
-any(is.na(nasa$con_mental_workload))
-impute(efs$con_mental_workload, median)
-efs$con_mental_workload[is.na(efs$con_mental_workload)] <- median(efs$con_mental_workload, na.rm = T)
-any(is.na(efs$con_mental_workload))
-## Randomise the Data 
-nasa <- nasa[sample(1:nrow(nasa)), ]
-wp <- wp[sample(1:nrow(wp)), ]
-efs <- efs[sample(1:nrow(efs)), ]
-## Split the data into train and test 70:30
-train_nasa <- nasa[1:161,] 
-test_nasa <- nasa[162:230,]
-train_wp <- wp[1:154,] 
-test_wp <- wp[155:217,]
-train_efs <- efs[1:167,] 
-test_efs <- efs[168:237,]
-
-## Check zero & near zero-variance
-nzv_nasa <- nearZeroVar(nasa[,13:20], saveMetrics = T)
-nzv_nasa[nzv_nasa$nzv,][1:10,]
-nzv_wp <- nearZeroVar(wp[,13:22], saveMetrics = T)
-nzv_wp[nzv_wp$nzv,][1:10,]
-nzv_efs <- nearZeroVar(efs[,13:34], saveMetrics = T)
-nzv_efs[nzv_efs$nzv,][1:10,]
-
-# Scatter plot matrix
-## put histograms on the diagonal
-panel.hist <- function(x, ...)
-{
-  usr <- par("usr"); on.exit(par(usr))
-  par(usr = c(usr[1:2], 0, 1.5) )
-  h <- hist(x, plot = FALSE)
-  breaks <- h$breaks; nB <- length(breaks)
-  y <- h$counts; y <- y/max(y)
-  rect(breaks[-nB], 0, breaks[-1], y, col = "cyan", ...)
-}
-## put (absolute) correlations on the upper panels, with size proportional to the correlations.
-panel.cor <- function(x, y, digits = 2, prefix = "", cex.cor, ...)
-{
-  usr <- par("usr"); on.exit(par(usr))
-  par(usr = c(0, 1, 0, 1))
-  r <- abs(cor(x, y))
-  txt <- format(c(r, 0.123456789), digits = digits)[1]
-  txt <- paste0(prefix, txt)
-  if(missing(cex.cor)) cex.cor <- 0.8/strwidth(txt)
-  text(0.5, 0.5, txt, cex = cex.cor * r)
-}
-pairs(~con_mental_workload+con_mental+con_physical+con_temporal+con_performance+con_frustration+con_effort, data=train_nasa, main="Scatter plot matrix for NASA_MWL",
-      panel = panel.smooth,
-      cex = 1.5, pch = 24, bg = "light blue",
-      diag.panel = panel.hist, cex.labels = 2, font.labels = 2,
-      lower.panel = panel.smooth, upper.panel = panel.cor)
-pairs(~con_mental_workload+con_solving_deciding+con_response_selection+con_task_space+con_verbal_material+con_visual_resources+con_auditory_resources+con_manual_response+con_speech_response, data=train_wp, main="Scatter plot matrix for WP_MWL",
-      panel = panel.smooth,
-      cex = 1.5, pch = 24, bg = "light blue",
-      diag.panel = panel.hist, cex.labels = 2, font.labels = 2,
-      lower.panel = panel.smooth, upper.panel = panel.cor)
-pairs(~con_mental_workload+con_mental_demand+con_parallelism+con_temporal_demand+con_manual_Activity+con_visual_attention+con_effort+con_solving_deciding+con_frustration+con_context_bias+con_task_space+con_motivation+con_verbal_material+con_skill+con_auditory_attention+con_physical_demand+con_speech_response+con_utility+con_past_knowledge_expertise+con_arousal+con_performance, data=train_efs, main="Scatter plot matrix for EFS_MWL",
-      panel = panel.smooth,
-      cex = 1.5, pch = 24, bg = "light blue",
-      diag.panel = panel.hist, cex.labels = 2, font.labels = 2,
-      lower.panel = panel.smooth, upper.panel = panel.cor)
-
-train_nasa.num <- train_nasa[, sapply(train_nasa, is.numeric)]
-chart.Correlation(train_nasa.num, histogram = T)
-train_wp.num <- train_wp[, sapply(train_wp, is.numeric)]
-chart.Correlation(train_wp.num, histogram = T)
-train_efs.num <- train_efs[, sapply(train_efs, is.numeric)]
-chart.Correlation(train_efs.num, histogram = T)
-# corrplot(M, method) ; M <- corr(nasa)
-```
-
-```{r Linear Regression model}
-# Multiple Regression modeling
-## Linear Regression
-nasa_model_reg01 <- glm(formula = con_mental_workload ~ con_mental+con_physical+con_performance+con_frustration+con_temporal+con_effort, data = nasaTrain01) 
-summary(nasa_model_reg01)
-
-wp_model_reg <- glm(formula = con_mental_workload ~ con_solving_deciding+con_response_selection+con_task_space+con_verbal_material+con_visual_resources+con_auditory_resources+con_manual_response+con_speech_response, data = wpTrain) 
-summary(wp_model_reg)
-
-efs_model_reg <- glm(formula = con_mental_workload ~ con_mental_demand+con_parallelism+con_temporal_demand+con_manual_Activity+con_visual_attention+con_effort+con_solving_deciding+con_frustration+con_context_bias+con_task_space+con_motivation+con_verbal_material+con_skill+con_auditory_attention+con_physical_demand+con_speech_response+con_utility+con_past_knowledge_expertise+con_arousal+con_performance, data = efsTrain) 
-summary(efs_model_reg)
-
-### Making predictions
-nasa_pred_reg01 <- predict(nasa_model_reg01, nasaTest01)
-nasa.reg01 <- data.frame(R2 = R2(nasa_pred_reg01, nasaTest01$con_mental_workload),RMSE = RMSE(nasa_pred_reg01, nasaTest01$con_mental_workload))
-nasa.reg <- rbind(nasa.reg01,nasa.reg02,nasa.reg03,nasa.reg04,nasa.reg05,nasa.reg06,nasa.reg07,nasa.reg08,nasa.reg09,nasa.reg10)
-nasa.reg$scale <- "nasa"
-
-wp_pred_reg <- predict(wp_model_reg, wpTest)
-
-
-efs_pred_reg <- predict(efs_model_reg, efsTest)
-t.test(efsTest$con_mental_workload, efs_pred_reg, paired = T)
-# efs.mse <- mse(efsTest$con_mental_workload, efs_pred_reg)
-
-nasa_reg <- data.frame(nasa_pred_reg,nasaTest$con_mental_workload,nasaTest$scale)
-wp_reg <- data.frame(wp_pred_reg,wpTest$con_mental_workload,wpTest$scale)
-efs_reg <- data.frame(efs_pred_reg,efsTest$con_mental_workload,efsTest$scale)
-mwl_reg <- rbind(nasa_reg,wp_reg)
-mwl_reg <- rbind(mwl_reg,efs_reg)
-colnames(mwl_reg) <- c("predicted","actual","scale")
-
-### RMSE out of lm() result
-RSS1 <- c(crossprod(nasa_model_reg$residuals))
-MSE1 <- RSS1 / length(nasa_model_reg$residuals)
-RMSE1 <- sqrt(MSE1)
-sig2_1 <- RSS1 / nasa_model_reg$df.residual
-
-RSS2 <- c(crossprod(wp_model_reg$residuals))
-MSE2 <- RSS2 / length(wp_model_reg$residuals)
-RMSE2 <- sqrt(MSE2)
-sig2_2 <- RSS2 / wp_model_reg$df.residual
-
-RSS3 <- c(crossprod(efs_model_reg$residuals))
-MSE3 <- RSS3 / length(efs_model_reg$residuals)
-RMSE3 <- sqrt(MSE3)
-sig2_3 <- RSS3 / efs_model_reg$df.residual
-
-anova(nasa_model_reg, wp_model_reg, efs_model_reg, test='Chisq')
-
-ggplot(aes(x=scale, y=predicted, color=scale, fill=I("white")), data=nasa_reg) +
-  geom_boxplot() +
-  geom_hline(aes(yintercept = median(age)), colour = 'black') +
-  theme_bw() +
-  theme(
-    plot.background = element_blank()
-    ,panel.grid.major = element_blank()
-    ,panel.grid.minor = element_blank()
-    ,panel.border = element_blank()
-    ,text = element_text(size=18)
-  ) +
-  theme(axis.line = element_line(color = 'black')) +
-  ggtitle('R-squared Boxplot by Mental workload measures')
-
-write_csv(nasaTest[,c("mental_workload","scale")],"~/Documents/03_Dissertation/mentalWorkload.csv")
-write_csv(wpTest[,c("mental_workload","scale")],"~/Documents/03_Dissertation/mentalWorkload.csv",append = T)
-write_csv(efsTest[,c("mental_workload","scale")],"~/Documents/03_Dissertation/mentalWorkload.csv",append = T)
-head(read_csv("~/Documents/03_Dissertation/mentalWorkload.csv"))
-mwl <- read_csv("~/Documents/03_Dissertation/mentalWorkload.csv")
-
-
-## Logistic Regression
-### Transforming target value & modeling
-#### NASA
-nasa_model_log <- glm(formula = mental_workload_recode ~ con_mental+con_physical+con_performance+con_frustration+con_temporal+con_effort, 
-                      data = nasaTrain, family = binomial(link='logit'))
-summary(nasa_model_log)
-
-#### WP
-wp_model_log <- glm(formula = mental_workload_recode ~ con_solving_deciding+con_response_selection+con_task_space+con_verbal_material+con_visual_resources+con_auditory_resources+con_manual_response+con_speech_response, 
-                    data = wpTrain, family = binomial(link='logit'))
-summary(wp_model_log)
-
-#### EFS
-efs_model_log <- glm(formula = mental_workload_recode ~ con_mental_demand+con_parallelism+con_temporal_demand+con_manual_Activity+con_visual_attention+con_effort+con_solving_deciding+con_frustration+con_context_bias+con_task_space+con_motivation+con_verbal_material+con_skill+con_auditory_attention+con_physical_demand+con_speech_response+con_utility+con_past_knowledge_expertise+con_arousal+con_performance, 
-                     data = efsTrain, family = binomial(link='logit'))
-summary(efs_model_log)
-
-### Making predictions
-#### NASA
-exp(coefficients(nasa_model_log))
-predicted1 <- plogis(predict(nasa_model_log, nasaTest))
-#### WP
-exp(coefficients(wp_model_log))
-predicted2 <- plogis(predict(wp_model_log, wpTest))
-#### EFS
-exp(coefficients(efs_model_log))
-predicted3 <- plogis(predict(efs_model_log, efsTest))
-
-### Displaying results
-#### NASA
-nagelkerke(nasa_model_log)
-confusionMatrix(nasa_model_log$mental_workload_recode, predicted, threshold = 0.8)
-sensitivity(nasa_model_log$mental_workload_recode, predicted, threshold = 0.8)
-specificity(nasa_model_log$mental_workload_recode, predicted, threshold = 0.5)
-vif(nasa_model_log)
-#### WP
-nagelkerke(wp_model_log)
-confusionMatrix(wp_model_log$mental_workload_recode, predicted, threshold = 0.8)
-sensitivity(wp_model_log$mental_workload_recode, predicted, threshold = 0.8)
-specificity(wp_model_log$mental_workload_recode, predicted, threshold = 0.5)
-vif(wp_model_log)
-#### EFS
-nagelkerke(efs_model_log)
-confusionMatrix(efs_model_log$mental_workload_recode, predicted, threshold = 0.8)
-sensitivity(efs_model_log$mental_workload_recode, predicted, threshold = 0.8)
-specificity(efs_model_log$mental_workload_recode, predicted, threshold = 0.5)
-vif(efs_model_log)
-
-anova(nasa_model_log, wp_model_log, efs_model_log,test = "Chisq")
-
-## Building the model
-nasa_model_lr <- lm(con_mental_workload ~ price + bore + horsepower*city_mpg*highway_mpg + 
-                   wheel_base*length*width*curb_weight*engine_size, data = train_nasa)
-wp_model_lr <- lm(con_mental_workload ~ normalized_losses + bore + horsepower*city_mpg*highway_mpg + 
-                    wheel_base*length*width*curb_weight*engine_size, data = train_wp)
-efs_model_lr <- lm(con_mental_workload ~ normalized_losses + bore + horsepower*city_mpg*highway_mpg + 
-                    wheel_base*length*width*curb_weight*engine_size, data = train_efs)
-## Making predictions
-nasa_pred_lr <- predict(nasa_model_lr, test_nasa)
-wp_pred_lr <- predict(wp_model_lr, test_wp)
-efs_pred_lr <- predict(efs_model_lr, test_efs)
-print(nasa_pred_lr)
-print(wp_pred_lr)
-print(efs_pred_lr)
-## Displaying results
-summary(nasa_model_lr)
-summary(wp_model_lr)
-summary(efs_model_lr)
-## RMSE out of lm() result
-RSS1 <- c(crossprod(nasa_model_lr$residuals))
-MSE1 <- RSS1 / length(nasa_model_lr$residuals)
-RMSE1 <- sqrt(MSE1)
-sig2_1 <- RSS1 / nasa_model_lr$df.residual
-
-RSS2 <- c(crossprod(wp_model_lr$residuals))
-MSE2 <- RSS2 / length(wp_model_lr$residuals)
-RMSE2 <- sqrt(MSE2)
-sig2_2 <- RSS2 / wp_model_lr$df.residual
-
-RSS3 <- c(crossprod(efs_model_lr$residuals))
-MSE3 <- RSS3 / length(efs_model_lr$residuals)
-RMSE3 <- sqrt(MSE3)
-sig2_3 <- RSS3 / efs_model_lr$df.residual
-
-```
-
-```{r Decision Tree model}
-# Train the model
-nasa_model_dt <- C5.0(train_nasa, train_nasa$default)
-wp_model_dt <- C5.0(train_wp, train_wp$default)
-efs_model_dt <- C5.0(train_efs, train_efs$default)
-summary(nasa_model_dt)
-summary(wp_model_dt)
-summary(efs_model_dt)
-nasa_pred_dt <- predict(nasa_model_dt, test_nasa, type = "class")
-wp_pred_dt <- predict(wp_model_dt, test_wp, type = "class")
-efs_pred_dt <- predict(efs_model_dt, test_efs, type = "class")
-print(nasa_pred_dt)
-print(wp_pred_dt)
-print(efs_pred_dt)
-#sum(credit_pred == credit_test) / length(credit_pred)
-
-# Evaluate the model
-CrossTable(test_nasa$default, nasa_pred_dt,
-           prop.chisq = FALSE, prop.c = FALSE, prop.r = FALSE,
-           dnn = c('actual default', 'predicted default'))
-CrossTable(test_wp$default, wp_pred_dt,
-           prop.chisq = FALSE, prop.c = FALSE, prop.r = FALSE,
-           dnn = c('actual default', 'predicted default'))
-CrossTable(test_efs$default, efs_pred_dt,
-           prop.chisq = FALSE, prop.c = FALSE, prop.r = FALSE,
-           dnn = c('actual default', 'predicted default'))
-```
-
-```{r comparing}
-
 ```
 
 ## R Markdown
@@ -528,6 +13,268 @@ CrossTable(test_efs$default, efs_pred_dt,
 This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
 
 When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r load working space}
+# Load environment
+rm(list = ls())
+print(getwd())
+setwd("C:/Users/User/Documents/RStudio/BreastDivePort_PatientsDetail")
+print(getwd())
+
+# library(dataQualityR) #package is not available for this version of R
+library(stringr)
+library(readr)
+library(tidyverse) #table (frequency and proportion), install.packages("tidyverse")
+library(dplyr) # install.packages("dplyr")
+library(ggplot2)
+library(qcc) #install
+library(sqldf)
+library(Rcmdr)  #continuous var, numSummary function, install.packages("Rcmdr")
+library(moments)  #skewness,kurtosis
+library(plyr)   #categorical var, install.packages("plyr")
+library(gridExtra)  #graph
+
+# library(Hmisc)  #Imputate missing values
+# #library(DMwR) #Compute the accuracy of imputation, but need to install the other packages
+library(psych) #install, describeBy
+library(dunn.test) #install, non-parametric post-hoc test after Kruskal-Wallis
+library(stats)  #multiple regression lm() function, lapply function
+# library(PerformanceAnalytics) #chart.Correlation (Scatterplot)
+library(car)  #leveneTest, Scatterplot matrix
+library(caret) #classification & regression training
+# library(C50)
+library(AppliedPredictiveModeling) #Scatterplot, install.packages('AppliedPredictiveModeling')
+# library(rpart)
+# library(rpart.plot)
+# library(pROC)  #cross validation
+library(gmodels)  #Evaluate the model, chi square correlation, install.packages("gmodels")
+library(rattle)
+library(RColorBrewer)
+
+# Load file
+breastPatients <- read.csv("BreastPatientsDetail_Clinic.csv")
+
+# Data quality
+# breast_num.file <- paste(tempdir(),"/dq_breastNum.csv",sep = "")
+# breast_cat.file <- paste(tempdir(),"/dq_breastCat.csv",sep = "")
+# checkDataQuality(data=breast, out.file.num=breast_num.file, out.file.cat=breast_cat.file)
+
+## Input variables
+str(breastPatients)
+print(is.data.frame(breastPatients))
+head(breastPatients)
+summary(breastPatients)
+
+### Date calculation from Booking to Attendance
+breastPatients$Attendance.Date <- as.Date(breastPatients$Attendance.Date, format="%d/%m/%y")
+breastPatients$Booked.Date <- as.Date(breastPatients$Booked.Date)
+breast$daysDiff <- difftime(breastPatients$Attendance.Date,breastPatients$Booked.Date,units="days")
+
+breastPatients$attendanceMonth <- substring(breastPatients$Attendance.MonthYear,0,2) 
+
+write.csv(breastPatients[,c("Record.Type","Clinic.Code","Clinic.Type","NurseFlag","Medical.Record.Number","Gender","Attendance.Day","Attendance.MonthYear","Attendance.Date","Attendance.Type.Description","Attendance.Year","Attendance.Month","Referral.Source","Consultant","Insurance.Scheme","Eligibility","Age.at.Attendance","Age.at.Attendance.Cat.HSE","Pathway.Number","Present.Address","Home.Address","Appointment.Date...Time","Area.of.Residence","Referring.Hospital","Booking.Type","New.Attendances","Year","daysDiff","attendanceMonth")],"breast.csv")
+
+breast_attendance <- read.csv("breast.csv")
+
+```
+
+
+```{r inspection}
+# Inspecting data
+str(breast_attendance)
+summary(breast_attendance)
+head(breast_attendance)
+any(is.na(breast_attendance))
+colSums(is.na(breast_attendance))
+```
+
+
+```{r transformation}
+# Transforming data
+
+## Outcome description
+cbind(sort(table(breast_attendance$New.Attendances),decreasing=TRUE),sort(100*round(prop.table(table(breast_attendance$New.Attendances)),5),deparse.level=2,decreasing=TRUE))
+cbind(sort(table(breast2019$New.Attendances),decreasing=TRUE),sort(100*round(prop.table(table(breast2019$New.Attendances)),5),deparse.level=2,decreasing=TRUE))
+cbind(sort(table(breast2020$New.Attendances),decreasing=TRUE),sort(100*round(prop.table(table(breast2020$New.Attendances)),5),deparse.level=2,decreasing=TRUE))
+cbind(sort(table(breast2021$New.Attendances),decreasing=TRUE),sort(100*round(prop.table(table(breast2021$New.Attendances)),5),deparse.level=2,decreasing=TRUE))
+cbind(sort(table(breast2022$New.Attendances),decreasing=TRUE),sort(100*round(prop.table(table(breast2022$New.Attendances)),5),deparse.level=2,decreasing=TRUE))
+cbind(sort(table(breast2023$New.Attendances),decreasing=TRUE),sort(100*round(prop.table(table(breast2023$New.Attendances)),5),deparse.level=2,decreasing=TRUE))
+
+## Predictor description (categorical)
+
+### Data frame for nominal/ binary values of variables
+options(digits=2)
+cbind(sort(table(breast_attendance$Clinic.Type),decreasing=TRUE),sort(100*round(prop.table(table(breast_attendance$Clinic.Type)),5),deparse.level=2,decreasing=TRUE))
+cbind(sort(table(breast2019$Clinic.Type),decreasing=TRUE),sort(100*round(prop.table(table(breast2019$Clinic.Type)),5),deparse.level=2,decreasing=TRUE))
+cbind(sort(table(breast2020$Clinic.Type),decreasing=TRUE),sort(100*round(prop.table(table(breast2020$Clinic.Type)),5),deparse.level=2,decreasing=TRUE))
+cbind(sort(table(breast2021$Clinic.Type),decreasing=TRUE),sort(100*round(prop.table(table(breast2021$Clinic.Type)),5),deparse.level=2,decreasing=TRUE))
+cbind(sort(table(breast2022$Clinic.Type),decreasing=TRUE),sort(100*round(prop.table(table(breast2022$Clinic.Type)),5),deparse.level=2,decreasing=TRUE))
+cbind(sort(table(breast2023$Clinic.Type),decreasing=TRUE),sort(100*round(prop.table(table(breast2023$Clinic.Type)),5),deparse.level=2,decreasing=TRUE))
+
+cbind(sort(table(breast_attendance$Clinic.Code),decreasing=TRUE),sort(100*round(prop.table(table(breast_attendance$Clinic.Code)),5),deparse.level=2,decreasing=TRUE))
+
+cbind(sort(table(breast_attendance$Referral.Source),decreasing=TRUE),sort(100*round(prop.table(table(breast_attendance$Referral.Source)),5),deparse.level=2,decreasing=TRUE))
+
+cbind(sort(table(breast_attendance$Referring.Hospital),decreasing=TRUE),sort(100*round(prop.table(table(breast_attendance$Referring.Hospital)),5),deparse.level=2,decreasing=TRUE))
+
+cbind(sort(table(breast_attendance$Consultant),decreasing=TRUE),sort(100*round(prop.table(table(breast_attendance$Consultant)),5),deparse.level=2,decreasing=TRUE))
+
+cbind(sort(table(breast_attendance$Eligibility),decreasing=TRUE),sort(100*round(prop.table(table(breast_attendance$Eligibility)),5),deparse.level=2,decreasing=TRUE))
+
+cbind(sort(table(breast_attendance$Booking.Type),decreasing=TRUE),sort(100*round(prop.table(table(breast_attendance$Booking.Type)),5),deparse.level=2,decreasing=TRUE))
+
+cbind(sort(table(breast_attendance$Attendance.Type.Description),decreasing=TRUE),sort(100*round(prop.table(table(breast_attendance$Attendance.Type.Description)),5),deparse.level=2,decreasing=TRUE))
+
+cbind(sort(table(breast_attendance$Attendance.Day),decreasing=TRUE),sort(100*round(prop.table(table(breast_attendance$Attendance.Day)),5),deparse.level=2,decreasing=TRUE))
+
+cbind(sort(table(breast_attendance$Attendance.MonthYear),decreasing=TRUE),sort(100*round(prop.table(table(breast_attendance$Attendance.MonthYear)),5),deparse.level=2,decreasing=TRUE))
+
+cbind(sort(table(breast_attendance$attendanceMonth),decreasing=TRUE),sort(100*round(prop.table(table(breast_attendance$attendanceMonth)),5),deparse.level=2,decreasing=TRUE))
+
+cbind(sort(table(breast_attendance$Year),decreasing=TRUE),sort(100*round(prop.table(table(breast_attendance$Year)),5),deparse.level=2,decreasing=TRUE))
+
+cbind(sort(table(breast_attendance$Gender),decreasing=TRUE),sort(100*round(prop.table(table(breast_attendance$Gender)),5),deparse.level=2,decreasing=TRUE))
+
+cbind(sort(table(breast_attendance$Area.of.Residence),decreasing=TRUE),sort(100*round(prop.table(table(breast_attendance$Area.of.Residence)),5),deparse.level=2,decreasing=TRUE))
+
+# breast_attendance_tab <- cbind(table(breast_attendance$cat_status_5y,breastCancer$cat_status_studyCutoff),prop.table(table(breastCancer$cat_status_5y,breastCancer$cat_status_studyCutoff)),breastCancer[order(breastCancer$cat_status_studyCutoff),])
+# addmargins(breastCancer_tab)
+# prop.table(breastCancer_tab)
+
+## Predictor description (numeric)
+summary(breast_attendance$Age.at.Attendance)
+summary(breast_attendance$daysDiff)
+
+```
+
+
+# ```{r normality, echo=FALSE}
+# # Creating graphs
+# 
+# count_clinic.type <- sort(table(breast_attendance$Clinic.Type,breast_attendance$Year),decreasing=TRUE)
+# 
+# bp_clinicType <- barplot(count_clinic.type, main="Clinic type by year",
+#                          xlab="Number of Attendance", col=c("blue","green"),
+#                          legend = rownames(count_clinic.type),beside = TRUE)
+# count_clinic.type2019 <- table(breast2019$Clinic.Type)
+# bp2019_clinicType <- barplot(count_clinic.type2019)
+# count_clinic.type2020 <- table(breast2020$Clinic.Type)
+# barplot(count_clinic.type2020)
+# count_clinic.type2021 <- table(breast2021$Clinic.Type)
+# barplot(count_clinic.type2021)
+# count_clinic.type2022 <- table(breast2022$Clinic.Type)
+# barplot(count_clinic.type2022)
+# count_clinic.type2023 <- table(breast2023$Clinic.Type)
+# barplot(count_clinic.type2023)
+# grid.arrange(count_clinic.type,count_clinic.type2023,count_clinic.type2022,count_clinic.type2021,count_clinic.type2020,count_clinic.type2019,ncol=1)
+# 
+# 
+# gg <- ggplot(breast2023_sub, aes(x=breast2023_sub$Age.at.Attendance))
+# gg <- gg + labs(x = "Age at Attendance")
+# gg <- gg + geom_histogram(binwidth=2, colour="black", aes(y=..density..,fill=..count..))
+# gg <- gg + scale_fill_gradient("Count", low="#DCDCDC", high="#7C7C7C")
+# gg <- gg + stat_function(fun=dnorm, color="red",args=list(mean=mean(breast2023_sub$Age.at.Attendance,na.rm = T), sd=sd(breast2023_sub$Age.at.Attendance,na.rm = T)))
+# gg
+# qqnorm(breast2023_sub$Age.at.Attendance)
+# qqline(breast2023_sub$Age.at.Attendance, col=2)
+# boxplot(breast2023_sub$Age.at.Attendance)
+# skewness((breast2023_sub$Age.at.Attendance),na.rm = T)
+# kurtosis((breast2023_sub$Age.at.Attendance),na.rm = T)
+# 
+# cutoffabove_breast <- 50 + 1.5*IQR(breast2023_sub$Age.at.Attendance,na.rm = T)
+# cutoffbelow_breast <- 50 - 1.5*IQR(breast2023_sub$Age.at.Attendance,na.rm = T)
+# breast2023_sub <- subset(breast2023_sub, Age.at.Attendance <= cutoffabove_breast & Age.at.Attendance >= cutoffbelow_breast)
+# summary(breast2023_sub$Age.at.Attendance)
+# q1 <- qplot(x = Age.at.Attendance, data = breast2023_sub, colour=I("red"), fill=I("white")) +
+#   theme_bw() +
+#   theme(
+#     plot.background = element_blank()
+#     ,panel.grid.major = element_blank()
+#     ,panel.grid.minor = element_blank()
+#     ,panel.border = element_blank()
+#   ) +
+#   theme(axis.line = element_line(color = 'red'))
+# q2 <- qplot(x = Age.at.Attendance, data = breast2023_sub, colour=I("blue"), fill=I("white")) + 
+#   scale_x_continuous(limits = c(0,100)) +
+#   theme_bw() +
+#   theme(
+#     plot.background = element_blank()
+#     ,panel.grid.major = element_blank()
+#     ,panel.grid.minor = element_blank()
+#     ,panel.border = element_blank()
+#   ) +
+#   theme(axis.line = element_line(color = 'blue'))
+# grid.arrange(q1, q2, ncol=1)
+# 
+# # Test normality of numeric variables
+# set.seed(0)
+# breast_attendance_sub <- breast_attendance[1:5000,] #in shapiro.test, sample size must be between 3 and 5000
+# 
+# shapiro.test(breast_attendance_sub$X)
+# 
+# shapiro.test(breast_attendance_sub$Age.at.Attendance)
+# skewness((breast_attendance_sub$Age.at.Attendance),na.rm=T)
+# kurtosis((breast_attendance_sub$Age.at.Attendance),na.rm=T)
+# 
+# shapiro.test(breast_attendance_sub$daysDiff)
+# skewness((breast_attendance_sub$daysDiff),na.rm=T)
+# kurtosis((breast_attendance_sub$daysDiff),na.rm=T)
+# 
+# pareto.chart(breast_attendance$Referral.Source)
+# ```
+
+
+```{r correlation}
+## Correlation of outcome and predictor (nominal and nominal)
+CrossTable(breast_attendance$Clinic.Type, breast_attendance$New.Attendances, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
+CrossTable(breast2019$Clinic.Type, breast2019$New.Attendances, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
+CrossTable(breast2020$Clinic.Type, breast2020$New.Attendances, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
+CrossTable(breast2021$Clinic.Type, breast2021$New.Attendances, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
+CrossTable(breast2022$Clinic.Type, breast2022$New.Attendances, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
+CrossTable(breast2023$Clinic.Type, breast2023$New.Attendances, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
+
+CrossTable(breast_attendance$Clinic.Code, breast_attendance$New.Attendances, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
+CrossTable(breast_attendance$Referral.Source, breast_attendance$New.Attendances, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
+CrossTable(breast_attendance$Referring.Hospital, breast_attendance$New.Attendances, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
+CrossTable(breast_attendance$Consultant, breast_attendance$New.Attendances, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
+CrossTable(breast_attendance$Eligibility, breast_attendance$New.Attendances, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
+CrossTable(breast_attendance$Booking.Type, breast_attendance$New.Attendances, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
+
+CrossTable(breast_attendance$Attendance.Type.Description, breast_attendance$New.Attendances, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
+CrossTable(breast_attendance$Attendance.Day, breast_attendance$New.Attendances, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
+CrossTable(breast_attendance$Attendance.MonthYear, breast_attendance$New.Attendances, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
+CrossTable(breast_attendance$attendanceMonth, breast_attendance$New.Attendances, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
+
+CrossTable(breast_attendance$Year, breast_attendance$New.Attendances, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
+
+CrossTable(breast_attendance$Gender, breast_attendance$New.Attendances, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
+CrossTable(breast_attendance$Area.of.Residence, breast_attendance$New.Attendances, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
+
+
+## Correlation of outcome and predictor (nominal and scale) # if scale is parametric (normal distribution)
+leveneTest(Age.at.Attendance ~ New.Attendances, data=breast_attendance)
+t.test(Age.at.Attendance ~ New.Attendances, var.equal=FALSE, data=breast_attendance)
+
+leveneTest(daysDiff ~ New.Attendances, data=breast_attendance)
+t.test(daysDiff ~ New.Attendances, var.equal=TRUE, data=breast_attendance)
+
+## Correlation of outcome and predictor (nominal and ordinal) # if scale is nonparametric (not normal distribution)
+breast_attendance$New.Attendances <- as.factor(breast_attendance$New.Attendances)
+wilcox.test(breast_attendance$Age.at.Attendance ~ breast_attendance$New.Attendances)
+wilcox.test(breast_attendance$daysDiff ~ breast_attendance$New.Attendances)
+
+#describeBy(as.numeric(breast_attendance$New.Attendances), factor(breast_attendance$Year))
+bartlett.test(breast_attendance$New.Attendances,breast_attendance$Year)
+kruskal.test(breast_attendance$New.Attendances ~ breast_attendance$Year, data=breast_attendance)
+dunn_resultYear <- dunn.test(breast_attendance$X, g=breast_attendance$Year,method="bonferroni") #run library(dunn.test) for this test
+bartlett.test(breast_attendance$New.Attendances==1,breast_attendance$Year)
+kruskal.test(breast_attendance$New.Attendances==1 ~ breast_attendance$Year, data=breast_attendance)
+bartlett.test(breast_attendance$New.Attendances==0,breast_attendance$Year)
+kruskal.test(breast_attendance$New.Attendances==0 ~ breast_attendance$Year, data=breast_attendance)
+
+bartlett.test(breast_attendance$X,breast_attendance$Clinic.Type)
+kruskal.test(breast_attendance$X ~ breast_attendance$Clinic.Type, data=breast_attendance)
+```
 
 ## Including Plots
 
