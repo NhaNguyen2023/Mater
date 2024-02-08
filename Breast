@@ -8,14 +8,10 @@ date: "2024-02-07"
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown
-
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
+## Data Source: Mater Dive Port 7
+# Load the file
 ```{r load working space}
-# Load environment
+## Load environment
 rm(list = ls())
 print(getwd())
 setwd("C:/Users/User/Documents/RStudio/BreastDivePort_PatientsDetail")
@@ -51,41 +47,51 @@ library(gmodels)  #Evaluate the model, chi square correlation, install.packages(
 library(rattle)
 library(RColorBrewer)
 
-# Load file
-breastPatients <- read.csv("BreastPatientsDetail_Clinic.csv")
-
-# Data quality
-# breast_num.file <- paste(tempdir(),"/dq_breastNum.csv",sep = "")
-# breast_cat.file <- paste(tempdir(),"/dq_breastCat.csv",sep = "")
-# checkDataQuality(data=breast, out.file.num=breast_num.file, out.file.cat=breast_cat.file)
+## Load file
+main <- read.csv("BreastPatientsDetail_Clinic.csv")
+#sample <- main %>% group_by(main$Record.Type)
+#samplePatients <- sample_frac(main,0.1,replace = F)
 
 ## Input variables
-str(breastPatients)
-print(is.data.frame(breastPatients))
-head(breastPatients)
-summary(breastPatients)
+head(main)
+View(main)
+str(main)
+summary(main)
+allMissing = is.na(main)
+counts = colSums(allMissing)
+counts [counts>0]
+#main_transform <- transform(main, score = as.numeric(score), sum_click = as.numeric(sum_click))
+print(is.data.frame(main))
+
 
 ### Date calculation from Booking to Attendance
-breastPatients$Attendance.Date <- as.Date(breastPatients$Attendance.Date, format="%d/%m/%y")
-breastPatients$Booked.Date <- as.Date(breastPatients$Booked.Date)
-breast$daysDiff <- difftime(breastPatients$Attendance.Date,breastPatients$Booked.Date,units="days")
+main$Attendance.Date <- as.Date(main$Attendance.Date, format="%d/%m/%y")
+main$Appointment.Date <- as.Date(main$Appointment.Date...Time, format="%d/%m/%y")
+main$daysDiff <- difftime(main$Attendance.Date,main$Appointment.Date,units="days")
 
-breastPatients$attendanceMonth <- substring(breastPatients$Attendance.MonthYear,0,2) 
+main$attendanceMonth <- substring(main$Attendance.MonthYear,0,2)
 
-write.csv(breastPatients[,c("Record.Type","Clinic.Code","Clinic.Type","NurseFlag","Medical.Record.Number","Gender","Attendance.Day","Attendance.MonthYear","Attendance.Date","Attendance.Type.Description","Attendance.Year","Attendance.Month","Referral.Source","Consultant","Insurance.Scheme","Eligibility","Age.at.Attendance","Age.at.Attendance.Cat.HSE","Pathway.Number","Present.Address","Home.Address","Appointment.Date...Time","Area.of.Residence","Referring.Hospital","Booking.Type","New.Attendances","Year","daysDiff","attendanceMonth")],"breast.csv")
+main$addressDiff
+if (main$Present.Address == main$Home.Address) {
+main$addressDiff = 0
+} else
+main$addressDiff = 1
+ 
 
-breast_attendance <- read.csv("breast.csv")
+write.csv(main[,c("Record.Type","Clinic.Code","Clinic.Type","NurseFlag","Medical.Record.Number","Gender","Attendance.Day","Attendance.MonthYear","Attendance.Date","Attendance.Type.Description","Attendance.Year","Attendance.Month","Referral.Source","Consultant","Insurance.Scheme","Eligibility","Age.at.Attendance","Age.at.Attendance.Cat.HSE","Pathway.Number","Present.Address","Home.Address","Appointment.Date","Area.of.Residence","Referring.Hospital","Booking.Type","New.Attendances","Year","daysDiff","attendanceMonth")],"breast.csv")
+
+main_processed <- read.csv("breastDetails.csv")
 
 ```
 
 
 ```{r inspection}
 # Inspecting data
-str(breast_attendance)
-summary(breast_attendance)
-head(breast_attendance)
-any(is.na(breast_attendance))
-colSums(is.na(breast_attendance))
+str(main_processed)
+summary(main_processed)
+head(main_processed)
+any(is.na(main_processed))
+colSums(is.na(main_processed))
 ```
 
 
@@ -93,12 +99,10 @@ colSums(is.na(breast_attendance))
 # Transforming data
 
 ## Outcome description
-cbind(sort(table(breast_attendance$New.Attendances),decreasing=TRUE),sort(100*round(prop.table(table(breast_attendance$New.Attendances)),5),deparse.level=2,decreasing=TRUE))
-cbind(sort(table(breast2019$New.Attendances),decreasing=TRUE),sort(100*round(prop.table(table(breast2019$New.Attendances)),5),deparse.level=2,decreasing=TRUE))
-cbind(sort(table(breast2020$New.Attendances),decreasing=TRUE),sort(100*round(prop.table(table(breast2020$New.Attendances)),5),deparse.level=2,decreasing=TRUE))
-cbind(sort(table(breast2021$New.Attendances),decreasing=TRUE),sort(100*round(prop.table(table(breast2021$New.Attendances)),5),deparse.level=2,decreasing=TRUE))
-cbind(sort(table(breast2022$New.Attendances),decreasing=TRUE),sort(100*round(prop.table(table(breast2022$New.Attendances)),5),deparse.level=2,decreasing=TRUE))
-cbind(sort(table(breast2023$New.Attendances),decreasing=TRUE),sort(100*round(prop.table(table(breast2023$New.Attendances)),5),deparse.level=2,decreasing=TRUE))
+cbind(sort(table(main_processed$Record.Type=="Attendance"),decreasing=TRUE),sort(100*round(prop.table(table(main_processed$Record.Type=="Attendance")),5),deparse.level=2,decreasing=TRUE))
+cbind(sort(table(main_processed$Record.Type=="Cancellation"),decreasing=TRUE),sort(100*round(prop.table(table(main_processed$Record.Type=="Cancellation")),5),deparse.level=2,decreasing=TRUE))
+cbind(sort(table(main_processed$Record.Type=="DNA"),decreasing=TRUE),sort(100*round(prop.table(table(main_processed$Record.Type=="DNA")),5),deparse.level=2,decreasing=TRUE))
+cbind(sort(table(main_processed$Record.Type=="Future Booking"),decreasing=TRUE),sort(100*round(prop.table(table(main_processed$Record.Type=="Future Booking")),5),deparse.level=2,decreasing=TRUE))
 
 ## Predictor description (categorical)
 
