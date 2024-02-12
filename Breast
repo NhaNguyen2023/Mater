@@ -21,29 +21,37 @@ print(getwd())
 library(stringr)
 library(readr)
 library(tidyverse) #table (frequency and proportion), install.packages("tidyverse")
-library(dplyr) # install.packages("dplyr")
+library(tidyr) # CrossTable
+library(dplyr) # CrossTable, install.packages("dplyr")
 library(ggplot2)
 library(qcc) #install
 library(sqldf)
-library(Rcmdr)  #continuous var, numSummary function, install.packages("Rcmdr")
-library(moments)  #skewness,kurtosis
-library(plyr)   #categorical var, install.packages("plyr")
+#library(Rcmdr)  #continuous var, numSummary function, install.packages("Rcmdr") ##not running if in hurry
 library(gridExtra)  #graph
 
-# library(Hmisc)  #Imputate missing values
-# #library(DMwR) #Compute the accuracy of imputation, but need to install the other packages
+#library(Hmisc)  #Imputate missing values
+#library(DMwR) #Compute the accuracy of imputation, but need to install the other packages
+
 library(psych) #install, describeBy
+library(moments)  #skewness,kurtosis
+library(plyr)   #categorical var, install.packages("plyr")
+library(pastecs) #stat.desc
+library(semTools) 
+library(car)  #leveneTest, Scatterplot matrix
+
 library(dunn.test) #install, non-parametric post-hoc test after Kruskal-Wallis
 library(stats)  #multiple regression lm() function, lapply function
 # library(PerformanceAnalytics) #chart.Correlation (Scatterplot)
-library(car)  #leveneTest, Scatterplot matrix
-library(caret) #classification & regression training
+
+library(caret) #classification & regression training, varImp
 # library(C50)
 library(AppliedPredictiveModeling) #Scatterplot, install.packages('AppliedPredictiveModeling')
 # library(rpart)
 # library(rpart.plot)
 # library(pROC)  #cross validation
-library(gmodels)  #Evaluate the model, chi square correlation, install.packages("gmodels")
+library(gmodels)  #Evaluate the model, CrossTable correlation, install.packages("gmodels")
+library(epiDisplay) #plot with AUC for model prediction
+library(survey) #comparing models, regTermTest
 library(rattle)
 library(RColorBrewer)
 
@@ -64,29 +72,34 @@ counts [counts>0]
 print(is.data.frame(main))
 
 
-### Date calculation from Booking to Attendance
+### Date calculation from Appointment/ Booking to Attendance
 main$Attendance.Date <- as.Date(main$Attendance.Date, format="%d/%m/%y")
-main$Appointment.Date <- as.Date(main$Appointment.Date...Time, format="%d/%m/%y")
-main$daysDiff <- difftime(main$Attendance.Date,main$Appointment.Date,units="days")
 
-main$attendanceMonth <- substring(main$Attendance.MonthYear,0,2)
+main$Appointment.Date <- as.POSIXct(main$Appointment.Date...Time,format="%Y%m%d %H:%M:%S",tz=Sys.timezone())
+main$Appointment.Date <- as.Date(main$Appointment.Date, format="%d/%m/%y")
 
-main$addressDiff
-if (main$Present.Address == main$Home.Address) {
-main$addressDiff = 0
-} else
-main$addressDiff = 1
- 
+main$Booked.Date <- as.POSIXct(main$Booked.Date,format="%Y/%m/%d",tz=Sys.timezone())
+main$Booked.Date_new <- as.Date(main$Booked.Date, format="%d/%m/%y")
 
-write.csv(main[,c("Record.Type","Clinic.Code","Clinic.Type","NurseFlag","Medical.Record.Number","Gender","Attendance.Day","Attendance.MonthYear","Attendance.Date","Attendance.Type.Description","Attendance.Year","Attendance.Month","Referral.Source","Consultant","Insurance.Scheme","Eligibility","Age.at.Attendance","Age.at.Attendance.Cat.HSE","Pathway.Number","Present.Address","Home.Address","Appointment.Date","Area.of.Residence","Referring.Hospital","Booking.Type","New.Attendances","Year","daysDiff","attendanceMonth")],"breast.csv")
+main$daysDiff_attendanceAppoint <- difftime(main$Appointment.Date,main$Attendance.Date,units="days")
+main$daysDiff_attendanceBooked <- difftime(main$Booked.Date,main$Attendance.Date,units="days")
+
+#main$attendanceMonth <- substring(main$Attendance.MonthYear,0,2)
+
+main$addressDiff <- ifelse(main$Present.Address == main$Home.Address, 0, 1)
+
+main$Rebooked.Indicator <- main$Rebooked.Indicator..HIS.
+
+write.csv(main[,c("Record.Type","Clinic.Code","Clinic.Type","NurseFlag","Medical.Record.Number","Gender","Attendance.Day","Attendance.MonthYear","Attendance.Date","Attendance.Type.Description","Attendance.Year","Attendance.Month","Referral.Source","Consultant","Insurance.Scheme","Eligibility","Age.at.Attendance","Age.at.Attendance.Cat.HSE","Pathway.Number","Present.Address","Home.Address","Appointment.Date","Area.of.Residence","Referring.Hospital","Booking.Type","Booked.Date_new","Cancellation.Group","Reason.for.Cancellation.Desc","Rebooked.Indicator","Hospital.Catchment","No.Attendances","No.New.Attendances","No.Cancels","daysDiff_attendanceAppoint","daysDiff_attendanceBooked","addressDiff")],"breastDetails.csv")
 
 main_processed <- read.csv("breastDetails.csv")
 
 ```
 
 
-```{r inspection}
 # Inspecting data
+```{r inspection}
+
 str(main_processed)
 summary(main_processed)
 head(main_processed)
@@ -95,66 +108,147 @@ colSums(is.na(main_processed))
 ```
 
 
-```{r transformation}
-# Transforming data
+# Creating descriptive statistics
+```{r descriptive statistics}
 
 ## Outcome description
+unique(main_processed$Record.Type)
 cbind(sort(table(main_processed$Record.Type=="Attendance"),decreasing=TRUE),sort(100*round(prop.table(table(main_processed$Record.Type=="Attendance")),5),deparse.level=2,decreasing=TRUE))
 cbind(sort(table(main_processed$Record.Type=="Cancellation"),decreasing=TRUE),sort(100*round(prop.table(table(main_processed$Record.Type=="Cancellation")),5),deparse.level=2,decreasing=TRUE))
 cbind(sort(table(main_processed$Record.Type=="DNA"),decreasing=TRUE),sort(100*round(prop.table(table(main_processed$Record.Type=="DNA")),5),deparse.level=2,decreasing=TRUE))
 cbind(sort(table(main_processed$Record.Type=="Future Booking"),decreasing=TRUE),sort(100*round(prop.table(table(main_processed$Record.Type=="Future Booking")),5),deparse.level=2,decreasing=TRUE))
 
 ## Predictor description (categorical)
-
 ### Data frame for nominal/ binary values of variables
+unique(main_processed$Clinic.Code)
+unique(main_processed$Clinic.Type)
+unique(main_processed$NurseFlag)
+unique(main_processed$Medical.Record.Number)
+unique(main_processed$Gender)
+unique(main_processed$Attendance.Day)
+unique(main_processed$Attendance.MonthYear)
+unique(main_processed$Attendance.Type.Description)
+unique(main_processed$Attendance.Year)
+unique(main_processed$Attendance.Month)
+unique(main_processed$Referral.Source)
+unique(main_processed$Consultant)
+unique(main_processed$Insurance.Scheme)
+unique(main_processed$Eligibility)
+unique(main_processed$Age.at.Attendance.Cat.HSE)
+unique(main_processed$Area.of.Residence)
+unique(main_processed$Referring.Hospital)
+unique(main_processed$Booking.Type)
+unique(main_processed$Cancellation.Group)
+unique(main_processed$Reason.for.Cancellation.Desc)
+unique(main_processed$Rebooked.Indicator)
+unique(main_processed$Hospital.Catchment)
+
+
 options(digits=2)
-cbind(sort(table(breast_attendance$Clinic.Type),decreasing=TRUE),sort(100*round(prop.table(table(breast_attendance$Clinic.Type)),5),deparse.level=2,decreasing=TRUE))
-cbind(sort(table(breast2019$Clinic.Type),decreasing=TRUE),sort(100*round(prop.table(table(breast2019$Clinic.Type)),5),deparse.level=2,decreasing=TRUE))
-cbind(sort(table(breast2020$Clinic.Type),decreasing=TRUE),sort(100*round(prop.table(table(breast2020$Clinic.Type)),5),deparse.level=2,decreasing=TRUE))
-cbind(sort(table(breast2021$Clinic.Type),decreasing=TRUE),sort(100*round(prop.table(table(breast2021$Clinic.Type)),5),deparse.level=2,decreasing=TRUE))
-cbind(sort(table(breast2022$Clinic.Type),decreasing=TRUE),sort(100*round(prop.table(table(breast2022$Clinic.Type)),5),deparse.level=2,decreasing=TRUE))
-cbind(sort(table(breast2023$Clinic.Type),decreasing=TRUE),sort(100*round(prop.table(table(breast2023$Clinic.Type)),5),deparse.level=2,decreasing=TRUE))
+cbind(sort(table(main_processed$Clinic.Type),decreasing=TRUE),sort(100*round(prop.table(table(main_processed$Clinic.Type)),5),deparse.level=2,decreasing=TRUE))
 
-cbind(sort(table(breast_attendance$Clinic.Code),decreasing=TRUE),sort(100*round(prop.table(table(breast_attendance$Clinic.Code)),5),deparse.level=2,decreasing=TRUE))
+cbind(sort(table(main_processed$Clinic.Code),decreasing=TRUE),sort(100*round(prop.table(table(main_processed$Clinic.Code)),5),deparse.level=2,decreasing=TRUE))
 
-cbind(sort(table(breast_attendance$Referral.Source),decreasing=TRUE),sort(100*round(prop.table(table(breast_attendance$Referral.Source)),5),deparse.level=2,decreasing=TRUE))
+cbind(sort(table(main_processed$NurseFlag),decreasing=TRUE),sort(100*round(prop.table(table(main_processed$NurseFlag)),5),deparse.level=2,decreasing=TRUE))
 
-cbind(sort(table(breast_attendance$Referring.Hospital),decreasing=TRUE),sort(100*round(prop.table(table(breast_attendance$Referring.Hospital)),5),deparse.level=2,decreasing=TRUE))
+cbind(sort(table(main_processed$Medical.Record.Number),decreasing=TRUE),sort(100*round(prop.table(table(main_processed$Medical.Record.Number)),5),deparse.level=2,decreasing=TRUE)) #group freq of MRN at 34
 
-cbind(sort(table(breast_attendance$Consultant),decreasing=TRUE),sort(100*round(prop.table(table(breast_attendance$Consultant)),5),deparse.level=2,decreasing=TRUE))
+cbind(sort(table(main_processed$Referral.Source),decreasing=TRUE),sort(100*round(prop.table(table(main_processed$Referral.Source)),5),deparse.level=2,decreasing=TRUE))
 
-cbind(sort(table(breast_attendance$Eligibility),decreasing=TRUE),sort(100*round(prop.table(table(breast_attendance$Eligibility)),5),deparse.level=2,decreasing=TRUE))
+cbind(sort(table(main_processed$Referring.Hospital),decreasing=TRUE),sort(100*round(prop.table(table(main_processed$Referring.Hospital)),5),deparse.level=2,decreasing=TRUE))
 
-cbind(sort(table(breast_attendance$Booking.Type),decreasing=TRUE),sort(100*round(prop.table(table(breast_attendance$Booking.Type)),5),deparse.level=2,decreasing=TRUE))
+cbind(sort(table(main_processed$Consultant),decreasing=TRUE),sort(100*round(prop.table(table(main_processed$Consultant)),5),deparse.level=2,decreasing=TRUE))
 
-cbind(sort(table(breast_attendance$Attendance.Type.Description),decreasing=TRUE),sort(100*round(prop.table(table(breast_attendance$Attendance.Type.Description)),5),deparse.level=2,decreasing=TRUE))
+cbind(sort(table(main_processed$Insurance.Scheme),decreasing=TRUE),sort(100*round(prop.table(table(main_processed$Insurance.Scheme)),5),deparse.level=2,decreasing=TRUE))
 
-cbind(sort(table(breast_attendance$Attendance.Day),decreasing=TRUE),sort(100*round(prop.table(table(breast_attendance$Attendance.Day)),5),deparse.level=2,decreasing=TRUE))
+cbind(sort(table(main_processed$Eligibility),decreasing=TRUE),sort(100*round(prop.table(table(main_processed$Eligibility)),5),deparse.level=2,decreasing=TRUE))
 
-cbind(sort(table(breast_attendance$Attendance.MonthYear),decreasing=TRUE),sort(100*round(prop.table(table(breast_attendance$Attendance.MonthYear)),5),deparse.level=2,decreasing=TRUE))
+cbind(sort(table(main_processed$Booking.Type),decreasing=TRUE),sort(100*round(prop.table(table(main_processed$Booking.Type)),5),deparse.level=2,decreasing=TRUE))
 
-cbind(sort(table(breast_attendance$attendanceMonth),decreasing=TRUE),sort(100*round(prop.table(table(breast_attendance$attendanceMonth)),5),deparse.level=2,decreasing=TRUE))
+cbind(sort(table(main_processed$Attendance.Type.Description),decreasing=TRUE),sort(100*round(prop.table(table(main_processed$Attendance.Type.Description)),5),deparse.level=2,decreasing=TRUE))
 
-cbind(sort(table(breast_attendance$Year),decreasing=TRUE),sort(100*round(prop.table(table(breast_attendance$Year)),5),deparse.level=2,decreasing=TRUE))
+cbind(sort(table(main_processed$Attendance.Day),decreasing=TRUE),sort(100*round(prop.table(table(main_processed$Attendance.Day)),5),deparse.level=2,decreasing=TRUE))
 
-cbind(sort(table(breast_attendance$Gender),decreasing=TRUE),sort(100*round(prop.table(table(breast_attendance$Gender)),5),deparse.level=2,decreasing=TRUE))
+cbind(sort(table(main_processed$Attendance.MonthYear),decreasing=TRUE),sort(100*round(prop.table(table(main_processed$Attendance.MonthYear)),5),deparse.level=2,decreasing=TRUE))
 
-cbind(sort(table(breast_attendance$Area.of.Residence),decreasing=TRUE),sort(100*round(prop.table(table(breast_attendance$Area.of.Residence)),5),deparse.level=2,decreasing=TRUE))
+cbind(sort(table(main_processed$Attendance.Month),decreasing=TRUE),sort(100*round(prop.table(table(main_processed$Attendance.Month)),5),deparse.level=2,decreasing=TRUE))
 
-# breast_attendance_tab <- cbind(table(breast_attendance$cat_status_5y,breastCancer$cat_status_studyCutoff),prop.table(table(breastCancer$cat_status_5y,breastCancer$cat_status_studyCutoff)),breastCancer[order(breastCancer$cat_status_studyCutoff),])
-# addmargins(breastCancer_tab)
-# prop.table(breastCancer_tab)
+cbind(sort(table(main_processed$Attendance.Year),decreasing=TRUE),sort(100*round(prop.table(table(main_processed$Attendance.Year)),5),deparse.level=2,decreasing=TRUE))
+
+cbind(sort(table(main_processed$No.Attendances),decreasing=TRUE),sort(100*round(prop.table(table(main_processed$No.Attendances)),5),deparse.level=2,decreasing=TRUE))
+
+cbind(sort(table(main_processed$No.New.Attendances),decreasing=TRUE),sort(100*round(prop.table(table(main_processed$No.New.Attendances)),5),deparse.level=2,decreasing=TRUE))
+
+cbind(sort(table(main_processed$No.Cancels),decreasing=TRUE),sort(100*round(prop.table(table(main_processed$No.Cancels)),5),deparse.level=2,decreasing=TRUE))
+
+cbind(sort(table(main_processed$Cancellation.Group),decreasing=TRUE),sort(100*round(prop.table(table(main_processed$Cancellation.Group)),5),deparse.level=2,decreasing=TRUE))
+
+cbind(sort(table(main_processed$Reason.for.Cancellation.Desc),decreasing=TRUE),sort(100*round(prop.table(table(main_processed$Reason.for.Cancellation.Desc)),5),deparse.level=2,decreasing=TRUE))
+
+cbind(sort(table(main_processed$Rebooked.Indicator),decreasing=TRUE),sort(100*round(prop.table(table(main_processed$Rebooked.Indicator)),5),deparse.level=2,decreasing=TRUE))
+
+cbind(sort(table(main_processed$Hospital.Catchment),decreasing=TRUE),sort(100*round(prop.table(table(main_processed$Hospital.Catchment)),5),deparse.level=2,decreasing=TRUE))
+
+cbind(sort(table(main_processed$Gender),decreasing=TRUE),sort(100*round(prop.table(table(main_processed$Gender)),5),deparse.level=2,decreasing=TRUE))
+
+cbind(sort(table(main_processed$Area.of.Residence),decreasing=TRUE),sort(100*round(prop.table(table(main_processed$Area.of.Residence)),5),deparse.level=2,decreasing=TRUE))
+
+cbind(sort(table(main_processed$addressDiff),decreasing=TRUE),sort(100*round(prop.table(table(main_processed$addressDiff)),5),deparse.level=2,decreasing=TRUE))
+
+cbind(sort(table(main_processed$Age.at.Attendance.Cat.HSE),decreasing=TRUE),sort(100*round(prop.table(table(main_processed$Age.at.Attendance.Cat.HSE)),5),deparse.level=2,decreasing=TRUE))
+
+
+## Transforming data
+main_group <- main_processed %>% group_by(main_processed$Medical.Record.Number) #library(moments)
+main_group$freq_MRN_recode <- ifelse(count(main_group$Medical.Record.Number >= 34)==1,1,0)
 
 ## Predictor description (numeric)
-summary(breast_attendance$Age.at.Attendance)
-summary(breast_attendance$daysDiff)
+summary(main_processed$Age.at.Attendance)
+stat.desc(main_processed$Age.at.Attendance, basic=F)
+skew(main_processed$Age.at.Attendance)
+kurtosis(main_processed$Age.at.Attendance)
+
+summary(main_processed$daysDiff_attendanceAppoint)
+stat.desc(main_processed$daysDiff_attendanceAppoint, basic=F)
+skew(main_processed$daysDiff_attendanceAppoint)
+kurtosis(main_processed$daysDiff_attendanceAppoint)
+
+summary(main_processed$daysDiff_attendanceBooked)
+stat.desc(main_processed$daysDiff_attendanceBooked, basic=F)
+skew(main_processed$daysDiff_attendanceBooked)
+kurtosis(main_processed$daysDiff_attendanceBooked)
 
 ```
 
 
-# ```{r normality, echo=FALSE}
-# # Creating graphs
-# 
+```{r plot, echo=FALSE}
+# Creating graphs
+hist(main_processed$Age.at.Attendance)
+boxplot(main_processed$Age.at.Attendance,horizontal = T)
+
+set.seed(123)
+## Create the histogram with ggplot
+gg <- ggplot(main_processed, aes(x=main_processed$Age.at.Attendance))
+gg <- gg + labs(x = "Age at Attendance")
+gg <- gg + geom_histogram(binwidth=2, colour="black", aes(y=..density..,fill=..count..))
+gg <- gg + scale_fill_gradient("Count", low="#DCDCDC", high="#7C7C7C")
+gg <- gg + stat_function(fun=dnorm, color="red", args=list(mean=mean(main_processed$Age.at.Attendance,na.rm = T), sd=sd(main_processed$Age.at.Attendance,na.rm = T)))
+gg
+
+hist(main_processed$daysDiff_attendanceAppoint)
+boxplot(main_processed$daysDiff_attendanceAppoint,horizontal = T)
+
+# ggplot(main_processed, aes(x = main_processed$daysDiff_attendanceAppoint)) +
+#   geom_histogram(binwidth = 2, color = "black", aes(y=..density..,fill=..count..)) +
+#   scale_fill_gradient("Count", low="#DCDCDC", high="#7C7C7C") +
+#   geom_density(color = "blue", fill = "lightblue", alpha = 0.5) +  # Add density curve
+#   labs(x = "Difference of days between Attendance and Appointment date", y = "Density") +  # Customize axis labels
+#   stat_function(fun=dnorm, color="red", args=list(mean=mean(main_processed$daysDiff_attendanceAppoint,na.rm = T), sd=sd(main_processed$daysDiff_attendanceAppoint,na.rm = T))) +
+#   theme_minimal()  # Use a minimal theme
+
+hist(main_processed$daysDiff_attendanceBooked)
+boxplot(main_processed$daysDiff_attendanceBooked,horizontal = T)
+
 # count_clinic.type <- sort(table(breast_attendance$Clinic.Type,breast_attendance$Year),decreasing=TRUE)
 # 
 # bp_clinicType <- barplot(count_clinic.type, main="Clinic type by year",
@@ -173,12 +267,7 @@ summary(breast_attendance$daysDiff)
 # grid.arrange(count_clinic.type,count_clinic.type2023,count_clinic.type2022,count_clinic.type2021,count_clinic.type2020,count_clinic.type2019,ncol=1)
 # 
 # 
-# gg <- ggplot(breast2023_sub, aes(x=breast2023_sub$Age.at.Attendance))
-# gg <- gg + labs(x = "Age at Attendance")
-# gg <- gg + geom_histogram(binwidth=2, colour="black", aes(y=..density..,fill=..count..))
-# gg <- gg + scale_fill_gradient("Count", low="#DCDCDC", high="#7C7C7C")
-# gg <- gg + stat_function(fun=dnorm, color="red",args=list(mean=mean(breast2023_sub$Age.at.Attendance,na.rm = T), sd=sd(breast2023_sub$Age.at.Attendance,na.rm = T)))
-# gg
+
 # qqnorm(breast2023_sub$Age.at.Attendance)
 # qqline(breast2023_sub$Age.at.Attendance, col=2)
 # boxplot(breast2023_sub$Age.at.Attendance)
@@ -225,67 +314,171 @@ summary(breast_attendance$daysDiff)
 # kurtosis((breast_attendance_sub$daysDiff),na.rm=T)
 # 
 # pareto.chart(breast_attendance$Referral.Source)
-# ```
-
-
-```{r correlation}
-## Correlation of outcome and predictor (nominal and nominal)
-CrossTable(breast_attendance$Clinic.Type, breast_attendance$New.Attendances, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
-CrossTable(breast2019$Clinic.Type, breast2019$New.Attendances, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
-CrossTable(breast2020$Clinic.Type, breast2020$New.Attendances, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
-CrossTable(breast2021$Clinic.Type, breast2021$New.Attendances, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
-CrossTable(breast2022$Clinic.Type, breast2022$New.Attendances, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
-CrossTable(breast2023$Clinic.Type, breast2023$New.Attendances, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
-
-CrossTable(breast_attendance$Clinic.Code, breast_attendance$New.Attendances, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
-CrossTable(breast_attendance$Referral.Source, breast_attendance$New.Attendances, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
-CrossTable(breast_attendance$Referring.Hospital, breast_attendance$New.Attendances, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
-CrossTable(breast_attendance$Consultant, breast_attendance$New.Attendances, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
-CrossTable(breast_attendance$Eligibility, breast_attendance$New.Attendances, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
-CrossTable(breast_attendance$Booking.Type, breast_attendance$New.Attendances, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
-
-CrossTable(breast_attendance$Attendance.Type.Description, breast_attendance$New.Attendances, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
-CrossTable(breast_attendance$Attendance.Day, breast_attendance$New.Attendances, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
-CrossTable(breast_attendance$Attendance.MonthYear, breast_attendance$New.Attendances, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
-CrossTable(breast_attendance$attendanceMonth, breast_attendance$New.Attendances, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
-
-CrossTable(breast_attendance$Year, breast_attendance$New.Attendances, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
-
-CrossTable(breast_attendance$Gender, breast_attendance$New.Attendances, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
-CrossTable(breast_attendance$Area.of.Residence, breast_attendance$New.Attendances, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
-
-
-## Correlation of outcome and predictor (nominal and scale) # if scale is parametric (normal distribution)
-leveneTest(Age.at.Attendance ~ New.Attendances, data=breast_attendance)
-t.test(Age.at.Attendance ~ New.Attendances, var.equal=FALSE, data=breast_attendance)
-
-leveneTest(daysDiff ~ New.Attendances, data=breast_attendance)
-t.test(daysDiff ~ New.Attendances, var.equal=TRUE, data=breast_attendance)
-
-## Correlation of outcome and predictor (nominal and ordinal) # if scale is nonparametric (not normal distribution)
-breast_attendance$New.Attendances <- as.factor(breast_attendance$New.Attendances)
-wilcox.test(breast_attendance$Age.at.Attendance ~ breast_attendance$New.Attendances)
-wilcox.test(breast_attendance$daysDiff ~ breast_attendance$New.Attendances)
-
-#describeBy(as.numeric(breast_attendance$New.Attendances), factor(breast_attendance$Year))
-bartlett.test(breast_attendance$New.Attendances,breast_attendance$Year)
-kruskal.test(breast_attendance$New.Attendances ~ breast_attendance$Year, data=breast_attendance)
-dunn_resultYear <- dunn.test(breast_attendance$X, g=breast_attendance$Year,method="bonferroni") #run library(dunn.test) for this test
-bartlett.test(breast_attendance$New.Attendances==1,breast_attendance$Year)
-kruskal.test(breast_attendance$New.Attendances==1 ~ breast_attendance$Year, data=breast_attendance)
-bartlett.test(breast_attendance$New.Attendances==0,breast_attendance$Year)
-kruskal.test(breast_attendance$New.Attendances==0 ~ breast_attendance$Year, data=breast_attendance)
-
-bartlett.test(breast_attendance$X,breast_attendance$Clinic.Type)
-kruskal.test(breast_attendance$X ~ breast_attendance$Clinic.Type, data=breast_attendance)
 ```
 
-## Including Plots
 
-You can also embed plots, for example:
+# Correlation of outcome and predictor (nominal and nominal)
+```{r correlation}
+ 
+ ## Record Type & Clinic relevance
+# CrossTable(main_processed$Clinic.Type, main_processed$Record.Type, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
+# CrossTable(main_processed$Clinic.Code, main_processed$Record.Type, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
+# CrossTable(main_processed$NurseFlag, main_processed$Record.Type, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
+# CrossTable(main_processed$Referral.Source, main_processed$Record.Type, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
+# CrossTable(main_processed$Referring.Hospital, main_processed$Record.Type, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
+# CrossTable(main_processed$Consultant, main_processed$Record.Type, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
+# CrossTable(main_processed$Insurance.Scheme, main_processed$Record.Type, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
+# CrossTable(main_processed$Eligibility, main_processed$Record.Type, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
+# CrossTable(main_processed$Booking.Type, main_processed$Record.Type, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
+# CrossTable(main_processed$Hospital.Catchment, main_processed$Record.Type, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
+# 
+# ## Record Type & Cancellation relevance
+# CrossTable(main_processed$No.Attendances, main_processed$Record.Type, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
+# CrossTable(main_processed$No.New.Attendances, main_processed$Record.Type, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
+# CrossTable(main_processed$No.Cancels, main_processed$Record.Type, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
+# CrossTable(main_processed$Cancellation.Group, main_processed$Record.Type, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
+# CrossTable(main_processed$Reason.for.Cancellation.Desc, main_processed$Record.Type, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
+# CrossTable(main_processed$Reason.for.Cancellation.Desc, main_processed$Cancellation.Group, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
+# CrossTable(main_processed$Rebooked.Indicator, main_processed$Record.Type, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
+# CrossTable(main_processed$Cancellation.Group, main_processed$Rebooked.Indicator, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
+# CrossTable(main_processed$Reason.for.Cancellation.Desc, main_processed$Rebooked.Indicator, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
+# 
+# ## Record Type & Attendance relevance
+# CrossTable(main_processed$Attendance.Day, main_processed$Record.Type, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
+# CrossTable(main_processed$Attendance.Month, main_processed$Record.Type, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
+# CrossTable(main_processed$Attendance.Year, main_processed$Record.Type, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
+# CrossTable(main_processed$Attendance.MonthYear, main_processed$Record.Type, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
+# CrossTable(main_processed$Attendance.Type.Description, main_processed$Record.Type, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
+# 
+# ## Record Type & Patient characteristics relevance
+# CrossTable(main_processed$Gender, main_processed$Record.Type, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
+# CrossTable(main_processed$Age.at.Attendance.Cat.HSE, main_processed$Record.Type, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
+# CrossTable(main_processed$Area.of.Residence, main_processed$Record.Type, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
+# CrossTable(main_processed$addressDiff, main_processed$Record.Type, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
+# 
+# 
+# ## Record Type & Age, difference of days 
+# bartlett.test(main_processed$Age.at.Attendance,main_processed$Record.Type)
+# kruskal.test(main_processed$Age.at.Attendance ~ main_processed$Record.Type, data=main_processed)
+# dunn_result <- dunn.test(main_processed$Age.at.Attendance, g=main_processed$Record.Type, method="bonferroni") #run library(dunn.test) for this test
+# 
+# bartlett.test(main_processed$daysDiff_attendanceAppoint,main_processed$Record.Type)
+# kruskal.test(main_processed$daysDiff_attendanceAppoint ~ main_processed$Record.Type, data=main_processed)
+# dunn_result <- dunn.test(main_processed$daysDiff_attendanceAppoint, g=main_processed$Record.Type, method="bonferroni")
+# 
+# bartlett.test(main_processed$daysDiff_attendanceBooked,main_processed$Record.Type)
+# kruskal.test(main_processed$daysDiff_attendanceBooked ~ main_processed$Record.Type, data=main_processed)
+# dunn_result <- dunn.test(main_processed$daysDiff_attendanceBooked, g=main_processed$Record.Type, method="bonferroni")
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+
+## Attendances/ Cancellations & Age, difference of days of appointments or bookings
+### Correlation of outcome and predictor (nominal and scale/ ordinal) # t-test if scale is parametric (normal distribution), wilcox if scale is nonparametric (not normal distribution)
+leveneTest(Age.at.Attendance ~ as.factor(No.Attendances), data=main_processed)
+t.test(Age.at.Attendance ~ No.Attendances, var.equal=TRUE, data=main_processed) #leveneTest is Ho
+
+leveneTest(Age.at.Attendance ~ as.factor(No.Cancels), data=main_processed)
+t.test(Age.at.Attendance ~ No.Cancels, var.equal=FALSE, data=main_processed) #leveneTest is Ha
+wilcox.test(main_processed$Age.at.Attendance ~ main_processed$No.Cancels)
+
+leveneTest(Age.at.Attendance ~ as.factor(No.New.Attendances), data=main_processed)
+t.test(Age.at.Attendance ~ No.New.Attendances, var.equal=FALSE, data=main_processed) #leveneTest is Ha
+wilcox.test(main_processed$Age.at.Attendance ~ main_processed$No.New.Attendances)
+
+leveneTest(daysDiff_attendanceAppoint ~ as.factor(No.Cancels), data=main_processed) #leveneTest is Ha
+t.test(daysDiff_attendanceAppoint ~ No.Cancels, var.equal=FALSE, data=main_processed)
+
+leveneTest(daysDiff_attendanceBooked ~ as.factor(No.Cancels), data=main_processed) #leveneTest is Ha
+t.test(daysDiff_attendanceBooked ~ No.Cancels, var.equal=FALSE, data=main_processed)
+
+```
+
+# Build baseline model of cancellations with predictors, the smallest AIC provides the best model
+
+```{r model, echo=FALSE}
+## with Clinic relevance
+logmodel1 <- glm(formula = No.Cancels ~ Clinic.Code + Clinic.Type + NurseFlag + Referral.Source + Consultant + Insurance.Scheme + Eligibility + Referring.Hospital + Booking.Type + Hospital.Catchment, family = binomial(link = "logit"), data = main_processed)
+summary(logmodel1)
+
+logmodel1_re <- glm(formula = No.Cancels ~ Clinic.Code + Clinic.Type + Consultant + Eligibility + Booking.Type + Hospital.Catchment, family = binomial(link = "logit"), data = main_processed)
+summary(logmodel1_re)
+
+exp(coefficients(logmodel1_re))
+# predicted1 <- plogis(predict(logmodel1_re, main_processed))
+# nagelkerke(logmodel1_re)
+# confusionMatrix(main_processed$No.Cancels, predicted1, thresholder=0.8)
+# sensitivity(main_processed$No.Cancels, predicted1, thresholder=0.8)
+# specificity(main_processed$No.Cancels, predicted1, thresholder=0.8)
+vif(logmodel1_re)
+
+lroc(logmodel1_re, graph=TRUE) #library(epiDisplay), give plot plus AUC
+
+
+## with Attendance relevance
+logmodel2 <- glm(formula = No.Cancels ~ Attendance.Day + Attendance.Month + Attendance.Year + Attendance.MonthYear + Attendance.Type.Description, family = binomial(link = "logit"), data = main_processed)
+summary(logmodel2)
+
+logmodel2_re <- glm(formula = No.Cancels ~ Attendance.Day + Attendance.MonthYear + Attendance.Type.Description, family = binomial(link = "logit"), data = main_processed)
+summary(logmodel2_re)
+
+exp(coefficients(logmodel2_re))
+# predicted2 <- plogis(predict(logmodel2_re, main_processed))
+# nagelkerke(logmodel2_re)
+# confusionMatrix(main_processed$No.Cancels, predicted2, thresholder=0.8)
+# sensitivity(main_processed$No.Cancels, predicted2, thresholder=0.8)
+# specificity(main_processed$No.Cancels, predicted2, thresholder=0.8)
+vif(logmodel2_re)
+
+lroc(logmodel2_re, graph=TRUE)
+
+## with Patient relevance
+logmodel3 <- glm(formula = No.Cancels ~ Gender + Age.at.Attendance.Cat.HSE + Area.of.Residence + addressDiff, family = binomial(link = "logit"), data = main_processed)
+summary(logmodel3)
+
+exp(coefficients(logmodel3))
+# predicted3 <- plogis(predict(logmodel3, main_processed))
+# nagelkerke(logmodel3)
+# confusionMatrix(main_processed$No.Cancels, predicted3, thresholder=0.8)
+# sensitivity(main_processed$No.Cancels, predicted3, thresholder=0.8)
+# specificity(main_processed$No.Cancels, predicted3, thresholder=0.8)
+vif(logmodel3)
+
+lroc(logmodel3, graph=TRUE)
+
+## with all predictors
+logmodel <- glm(formula = No.Cancels ~ Gender + Age.at.Attendance.Cat.HSE + Area.of.Residence + addressDiff + Clinic.Code + Clinic.Type + Consultant + Eligibility + Booking.Type + Hospital.Catchment + Attendance.Day + Attendance.MonthYear + Attendance.Type.Description, family = binomial(link = "logit"), data = main_processed)
+summary(logmodel)
+
+exp(coefficients(logmodel))
+# predicted <- plogis(predict(logmodel, main_processed))
+# nagelkerke(logmodel)
+# confusionMatrix(main_processed$No.Cancels, predicted, thresholder=0.8)
+# sensitivity(main_processed$No.Cancels, predicted, thresholder=0.8)
+# specificity(main_processed$No.Cancels, predicted, thresholder=0.8)
+vif(logmodel)
+
+lroc(logmodel, graph=TRUE)
+
+```
+# Comparing models
+```{r comparing models, echo=FALSE}
+anova(logmodel1_re, logmodel2_re, logmodel3, logmodel, test="Chisq")
+#library(survey)
+regTermTest(logmodel,"Clinic.Code")
+regTermTest(logmodel,"Clinic.Type")
+regTermTest(logmodel,"Consultant")
+regTermTest(logmodel,"Eligibility")
+regTermTest(logmodel,"Booking.Type")
+#regTermTest(logmodel,"Hospital.Catchment")
+regTermTest(logmodel,"Attendance.Day")
+regTermTest(logmodel,"Attendance.MonthYear")
+#regTermTest(logmodel,"Attendance.Type.Description")
+regTermTest(logmodel,"Gender")
+regTermTest(logmodel,"Age.at.Attendance.Cat.HSE")
+regTermTest(logmodel,"Area.of.Residence")
+regTermTest(logmodel,"addressDiff")
+
+#library(caret)
+varImp(logmodel)
 ```
 
 Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
