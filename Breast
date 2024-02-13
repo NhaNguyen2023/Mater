@@ -319,76 +319,87 @@ boxplot(main_processed$daysDiff_attendanceBooked,horizontal = T)
 
 # Correlation of outcome and predictor (nominal and nominal)
 ```{r correlation}
- 
+ # Total correlation 
  ## Record Type & Clinic relevance
-# CrossTable(main_processed$Clinic.Type, main_processed$Record.Type, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
-# CrossTable(main_processed$Clinic.Code, main_processed$Record.Type, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
-# CrossTable(main_processed$NurseFlag, main_processed$Record.Type, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
-# CrossTable(main_processed$Referral.Source, main_processed$Record.Type, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
-# CrossTable(main_processed$Referring.Hospital, main_processed$Record.Type, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
-# CrossTable(main_processed$Consultant, main_processed$Record.Type, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
-# CrossTable(main_processed$Insurance.Scheme, main_processed$Record.Type, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
-# CrossTable(main_processed$Eligibility, main_processed$Record.Type, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
-# CrossTable(main_processed$Booking.Type, main_processed$Record.Type, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
-# CrossTable(main_processed$Hospital.Catchment, main_processed$Record.Type, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
-# 
-# ## Record Type & Cancellation relevance
-# CrossTable(main_processed$No.Attendances, main_processed$Record.Type, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
-# CrossTable(main_processed$No.New.Attendances, main_processed$Record.Type, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
-# CrossTable(main_processed$No.Cancels, main_processed$Record.Type, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
-# CrossTable(main_processed$Cancellation.Group, main_processed$Record.Type, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
-# CrossTable(main_processed$Reason.for.Cancellation.Desc, main_processed$Record.Type, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
-# CrossTable(main_processed$Reason.for.Cancellation.Desc, main_processed$Cancellation.Group, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
-# CrossTable(main_processed$Rebooked.Indicator, main_processed$Record.Type, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
-# CrossTable(main_processed$Cancellation.Group, main_processed$Rebooked.Indicator, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
-# CrossTable(main_processed$Reason.for.Cancellation.Desc, main_processed$Rebooked.Indicator, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
-# 
-# ## Record Type & Attendance relevance
-# CrossTable(main_processed$Attendance.Day, main_processed$Record.Type, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
-# CrossTable(main_processed$Attendance.Month, main_processed$Record.Type, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
-# CrossTable(main_processed$Attendance.Year, main_processed$Record.Type, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
-# CrossTable(main_processed$Attendance.MonthYear, main_processed$Record.Type, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
-# CrossTable(main_processed$Attendance.Type.Description, main_processed$Record.Type, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
-# 
-# ## Record Type & Patient characteristics relevance
-# CrossTable(main_processed$Gender, main_processed$Record.Type, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
-# CrossTable(main_processed$Age.at.Attendance.Cat.HSE, main_processed$Record.Type, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
-# CrossTable(main_processed$Area.of.Residence, main_processed$Record.Type, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
-# CrossTable(main_processed$addressDiff, main_processed$Record.Type, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
-# 
-# 
-# ## Record Type & Age, difference of days 
-# bartlett.test(main_processed$Age.at.Attendance,main_processed$Record.Type)
-# kruskal.test(main_processed$Age.at.Attendance ~ main_processed$Record.Type, data=main_processed)
-# dunn_result <- dunn.test(main_processed$Age.at.Attendance, g=main_processed$Record.Type, method="bonferroni") #run library(dunn.test) for this test
-# 
-# bartlett.test(main_processed$daysDiff_attendanceAppoint,main_processed$Record.Type)
-# kruskal.test(main_processed$daysDiff_attendanceAppoint ~ main_processed$Record.Type, data=main_processed)
-# dunn_result <- dunn.test(main_processed$daysDiff_attendanceAppoint, g=main_processed$Record.Type, method="bonferroni")
-# 
-# bartlett.test(main_processed$daysDiff_attendanceBooked,main_processed$Record.Type)
-# kruskal.test(main_processed$daysDiff_attendanceBooked ~ main_processed$Record.Type, data=main_processed)
-# dunn_result <- dunn.test(main_processed$daysDiff_attendanceBooked, g=main_processed$Record.Type, method="bonferroni")
+CrossTable(main_processed$Clinic.Type, main_processed$Record.Type, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Clinic.Code, main_processed$Record.Type, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$NurseFlag, main_processed$Record.Type, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Referral.Source, main_processed$Record.Type, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Referring.Hospital, main_processed$Record.Type, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Consultant, main_processed$Record.Type, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Insurance.Scheme, main_processed$Record.Type, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Eligibility, main_processed$Record.Type, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Booking.Type, main_processed$Record.Type, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Hospital.Catchment, main_processed$Record.Type, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+
+## Record Type & Attendance relevance
+CrossTable(main_processed$Attendance.Day, main_processed$Record.Type, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Attendance.Month, main_processed$Record.Type, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Attendance.Year, main_processed$Record.Type, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Attendance.MonthYear, main_processed$Record.Type, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Attendance.Type.Description, main_processed$Record.Type, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
+
+## Record Type & Patient characteristics relevance
+CrossTable(main_processed$Gender, main_processed$Record.Type, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Age.at.Attendance.Cat.HSE, main_processed$Record.Type, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Area.of.Residence, main_processed$Record.Type, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$addressDiff, main_processed$Record.Type, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
+
+## Record Type & Age, difference of days
+bartlett.test(main_processed$Age.at.Attendance,main_processed$Record.Type)
+kruskal.test(main_processed$Age.at.Attendance ~ main_processed$Record.Type, data=main_processed)
+dunn_result <- dunn.test(main_processed$Age.at.Attendance, g=main_processed$Record.Type, method="bonferroni") #run library(dunn.test) for this test
+
+bartlett.test(main_processed$daysDiff_attendanceAppoint,main_processed$Record.Type)
+kruskal.test(main_processed$daysDiff_attendanceAppoint ~ main_processed$Record.Type, data=main_processed)
+dunn_result <- dunn.test(main_processed$daysDiff_attendanceAppoint, g=main_processed$Record.Type, method="bonferroni")
+
+bartlett.test(main_processed$daysDiff_attendanceBooked,main_processed$Record.Type)
+kruskal.test(main_processed$daysDiff_attendanceBooked ~ main_processed$Record.Type, data=main_processed)
+dunn_result <- dunn.test(main_processed$daysDiff_attendanceBooked, g=main_processed$Record.Type, method="bonferroni")
 
 
-## Attendances/ Cancellations & Age, difference of days of appointments or bookings
-### Correlation of outcome and predictor (nominal and scale/ ordinal) # t-test if scale is parametric (normal distribution), wilcox if scale is nonparametric (not normal distribution)
-leveneTest(Age.at.Attendance ~ as.factor(No.Attendances), data=main_processed)
-t.test(Age.at.Attendance ~ No.Attendances, var.equal=TRUE, data=main_processed) #leveneTest is Ho
+# Cancellation correlation
+CrossTable(main_processed$Clinic.Type, main_processed$No.Cancels, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Clinic.Code, main_processed$No.Cancels, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$NurseFlag, main_processed$No.Cancels, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Referral.Source, main_processed$No.Cancels, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Referring.Hospital, main_processed$No.Cancels, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Consultant, main_processed$No.Cancels, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Insurance.Scheme, main_processed$No.Cancels, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Eligibility, main_processed$No.Cancels, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Booking.Type, main_processed$No.Cancels, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Hospital.Catchment, main_processed$No.Cancels, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+
+CrossTable(main_processed$Gender, main_processed$No.Cancels, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Age.at.Attendance.Cat.HSE, main_processed$No.Cancels, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+#CrossTable(main_processed$Area.of.Residence, main_processed$No.Cancels, digits=2, fisher=F, chisq=TRUE, expected=TRUE) # remove Na or impute where no residence
+CrossTable(main_processed$addressDiff, main_processed$No.Cancels, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
+
+CrossTable(main_processed$Reason.for.Cancellation.Desc, main_processed$Cancellation.Group, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Cancellation.Group, main_processed$Rebooked.Indicator, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Reason.for.Cancellation.Desc, main_processed$Rebooked.Indicator, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
 
 leveneTest(Age.at.Attendance ~ as.factor(No.Cancels), data=main_processed)
 t.test(Age.at.Attendance ~ No.Cancels, var.equal=FALSE, data=main_processed) #leveneTest is Ha
 wilcox.test(main_processed$Age.at.Attendance ~ main_processed$No.Cancels)
 
-leveneTest(Age.at.Attendance ~ as.factor(No.New.Attendances), data=main_processed)
-t.test(Age.at.Attendance ~ No.New.Attendances, var.equal=FALSE, data=main_processed) #leveneTest is Ha
-wilcox.test(main_processed$Age.at.Attendance ~ main_processed$No.New.Attendances)
-
+### days difference between Attendance and Appointment/Booked just in Cancellation
 leveneTest(daysDiff_attendanceAppoint ~ as.factor(No.Cancels), data=main_processed) #leveneTest is Ha
 t.test(daysDiff_attendanceAppoint ~ No.Cancels, var.equal=FALSE, data=main_processed)
 
 leveneTest(daysDiff_attendanceBooked ~ as.factor(No.Cancels), data=main_processed) #leveneTest is Ha
 t.test(daysDiff_attendanceBooked ~ No.Cancels, var.equal=FALSE, data=main_processed)
+
+# Attendance correlation
+## Attendances/ Cancellations & Age, difference of days of appointments or bookings
+### Correlation of outcome and predictor (nominal and scale/ ordinal) # t-test if scale is parametric (normal distribution), wilcox if scale is nonparametric (not normal distribution)
+leveneTest(Age.at.Attendance ~ as.factor(No.Attendances), data=main_processed)
+t.test(Age.at.Attendance ~ No.Attendances, var.equal=TRUE, data=main_processed) #leveneTest is Ho
+
+leveneTest(Age.at.Attendance ~ as.factor(No.New.Attendances), data=main_processed)
+t.test(Age.at.Attendance ~ No.New.Attendances, var.equal=FALSE, data=main_processed) #leveneTest is Ha
+wilcox.test(main_processed$Age.at.Attendance ~ main_processed$No.New.Attendances)
 
 ```
 
