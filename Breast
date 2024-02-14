@@ -57,6 +57,7 @@ library(RColorBrewer)
 
 ## Load file
 main <- read.csv("BreastPatientsDetail_Clinic.csv")
+main <- subset(main, Attendance.Year < 2024)
 #sample <- main %>% group_by(main$Record.Type)
 #samplePatients <- sample_frac(main,0.1,replace = F)
 
@@ -117,6 +118,7 @@ cbind(sort(table(main_processed$Record.Type=="Attendance"),decreasing=TRUE),sort
 cbind(sort(table(main_processed$Record.Type=="Cancellation"),decreasing=TRUE),sort(100*round(prop.table(table(main_processed$Record.Type=="Cancellation")),5),deparse.level=2,decreasing=TRUE))
 cbind(sort(table(main_processed$Record.Type=="DNA"),decreasing=TRUE),sort(100*round(prop.table(table(main_processed$Record.Type=="DNA")),5),deparse.level=2,decreasing=TRUE))
 cbind(sort(table(main_processed$Record.Type=="Future Booking"),decreasing=TRUE),sort(100*round(prop.table(table(main_processed$Record.Type=="Future Booking")),5),deparse.level=2,decreasing=TRUE))
+table(main_processed$Record.Type,main_processed$Attendance.MonthYear)
 
 ## Predictor description (categorical)
 ### Data frame for nominal/ binary values of variables
