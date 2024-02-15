@@ -17,7 +17,7 @@ print(getwd())
 setwd("C:/Users/User/Documents/RStudio/BreastDivePort_PatientsDetail")
 print(getwd())
 
-# library(dataQualityR) #package is not available for this version of R
+#library(dataQualityR) #package is not available for this version of R
 library(stringr)
 library(readr)
 library(tidyverse) #table (frequency and proportion), install.packages("tidyverse")
@@ -29,8 +29,8 @@ library(sqldf)
 #library(Rcmdr)  #continuous var, numSummary function, install.packages("Rcmdr") ##not running if in hurry
 library(gridExtra)  #graph
 
-#library(Hmisc)  #Imputate missing values
-#library(DMwR) #Compute the accuracy of imputation, but need to install the other packages
+library(Hmisc)  #Imputate missing values
+library(DMwR) #Compute the accuracy of imputation, but need to install the other packages
 
 library(psych) #install, describeBy
 library(moments)  #skewness,kurtosis
@@ -41,7 +41,7 @@ library(car)  #leveneTest, Scatterplot matrix
 
 library(dunn.test) #install, non-parametric post-hoc test after Kruskal-Wallis
 library(stats)  #multiple regression lm() function, lapply function
-# library(PerformanceAnalytics) #chart.Correlation (Scatterplot)
+library(PerformanceAnalytics) #chart.Correlation (Scatterplot)
 
 library(caret) #classification & regression training, varImp
 # library(C50)
@@ -91,7 +91,9 @@ main$addressDiff <- ifelse(main$Present.Address == main$Home.Address, 0, 1)
 
 main$Rebooked.Indicator <- main$Rebooked.Indicator..HIS.
 
-write.csv(main[,c("Record.Type","Clinic.Code","Clinic.Type","NurseFlag","Medical.Record.Number","Gender","Attendance.Day","Attendance.MonthYear","Attendance.Date","Attendance.Type.Description","Attendance.Year","Attendance.Month","Referral.Source","Consultant","Insurance.Scheme","Eligibility","Age.at.Attendance","Age.at.Attendance.Cat.HSE","Pathway.Number","Present.Address","Home.Address","Appointment.Date","Area.of.Residence","Referring.Hospital","Booking.Type","Booked.Date_new","Cancellation.Group","Reason.for.Cancellation.Desc","Rebooked.Indicator","Hospital.Catchment","No.Attendances","No.New.Attendances","No.Cancels","daysDiff_attendanceAppoint","daysDiff_attendanceBooked","addressDiff")],"breastDetails.csv")
+main$Referral.Source_recode <- ifelse(main$Referral.Source 
+
+write.csv(main[,c("Record.Type","Clinic.Code","Clinic.Type","NurseFlag","Medical.Record.Number","Gender","Attendance.Day","Attendance.MonthYear","Attendance.Date","Attendance.Type.Description","Attendance.Year","Attendance.Month","Referral.Source","Consultant","Insurance.Scheme","Eligibility","Age.at.Attendance","Age.at.Attendance.Cat.HSE","Pathway.Number","Present.Address","Home.Address","Appointment.Date","Area.of.Residence","Referring.Hospital","Booking.Type","Booked.Date_new","Cancellation.Group","Reason.for.Cancellation.Desc","Rebooked.Indicator","Hospital.Catchment","No.Attendances","No.New.Attendances","No.Cancels","No.DNAs","daysDiff_attendanceAppoint","daysDiff_attendanceBooked","addressDiff")],"breastDetails.csv")
 
 main_processed <- read.csv("breastDetails.csv")
 
@@ -335,23 +337,13 @@ CrossTable(main_processed$Booking.Type, main_processed$Record.Type, digits=2, fi
 CrossTable(main_processed$Hospital.Catchment, main_processed$Record.Type, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
 
 ## Record Type & Attendance relevance
-CrossTable(main_processed$Attendance.Day, main_processed$Record.Type, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
-CrossTable(main_processed$Attendance.Month, main_processed$Record.Type, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
-CrossTable(main_processed$Attendance.Year, main_processed$Record.Type, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
-CrossTable(main_processed$Attendance.MonthYear, main_processed$Record.Type, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
-CrossTable(main_processed$Attendance.Type.Description, main_processed$Record.Type, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Attendance.Day, main_processed$Record.Type, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Attendance.Month, main_processed$Record.Type, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Attendance.Year, main_processed$Record.Type, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Attendance.MonthYear, main_processed$Record.Type, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Attendance.Type.Description, main_processed$Record.Type, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
 
-## Record Type & Patient characteristics relevance
-CrossTable(main_processed$Gender, main_processed$Record.Type, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
-CrossTable(main_processed$Age.at.Attendance.Cat.HSE, main_processed$Record.Type, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
-CrossTable(main_processed$Area.of.Residence, main_processed$Record.Type, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
-CrossTable(main_processed$addressDiff, main_processed$Record.Type, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
-
-## Record Type & Age, difference of days
-bartlett.test(main_processed$Age.at.Attendance,main_processed$Record.Type)
-kruskal.test(main_processed$Age.at.Attendance ~ main_processed$Record.Type, data=main_processed)
-dunn_result <- dunn.test(main_processed$Age.at.Attendance, g=main_processed$Record.Type, method="bonferroni") #run library(dunn.test) for this test
-
+### & difference of attendance days
 bartlett.test(main_processed$daysDiff_attendanceAppoint,main_processed$Record.Type)
 kruskal.test(main_processed$daysDiff_attendanceAppoint ~ main_processed$Record.Type, data=main_processed)
 dunn_result <- dunn.test(main_processed$daysDiff_attendanceAppoint, g=main_processed$Record.Type, method="bonferroni")
@@ -360,8 +352,20 @@ bartlett.test(main_processed$daysDiff_attendanceBooked,main_processed$Record.Typ
 kruskal.test(main_processed$daysDiff_attendanceBooked ~ main_processed$Record.Type, data=main_processed)
 dunn_result <- dunn.test(main_processed$daysDiff_attendanceBooked, g=main_processed$Record.Type, method="bonferroni")
 
+## Record Type & Patient characteristics relevance
+CrossTable(main_processed$Gender, main_processed$Record.Type, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+
+CrossTable(main_processed$Age.at.Attendance.Cat.HSE, main_processed$Record.Type, digits=2, fisher=F, chisq=TRUE, expected=TRUE) #age group
+bartlett.test(main_processed$Age.at.Attendance,main_processed$Record.Type) # unequal variances
+kruskal.test(main_processed$Age.at.Attendance ~ main_processed$Record.Type, data=main_processed)
+dunn_result <- dunn.test(main_processed$Age.at.Attendance, g=main_processed$Record.Type, method="bonferroni") #run library(dunn.test) for this test
+
+CrossTable(main_processed$Area.of.Residence, main_processed$Record.Type, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$addressDiff, main_processed$Record.Type, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+
 
 # Cancellation correlation
+## clinic relevance
 CrossTable(main_processed$Clinic.Type, main_processed$No.Cancels, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
 CrossTable(main_processed$Clinic.Code, main_processed$No.Cancels, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
 CrossTable(main_processed$NurseFlag, main_processed$No.Cancels, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
@@ -373,41 +377,120 @@ CrossTable(main_processed$Eligibility, main_processed$No.Cancels, digits=2, fish
 CrossTable(main_processed$Booking.Type, main_processed$No.Cancels, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
 CrossTable(main_processed$Hospital.Catchment, main_processed$No.Cancels, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
 
-CrossTable(main_processed$Gender, main_processed$No.Cancels, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
-CrossTable(main_processed$Age.at.Attendance.Cat.HSE, main_processed$No.Cancels, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
-#CrossTable(main_processed$Area.of.Residence, main_processed$No.Cancels, digits=2, fisher=F, chisq=TRUE, expected=TRUE) # remove Na or impute where no residence
-CrossTable(main_processed$addressDiff, main_processed$No.Cancels, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
-
-CrossTable(main_processed$Reason.for.Cancellation.Desc, main_processed$Cancellation.Group, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
-CrossTable(main_processed$Cancellation.Group, main_processed$Rebooked.Indicator, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
-CrossTable(main_processed$Reason.for.Cancellation.Desc, main_processed$Rebooked.Indicator, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
-
-leveneTest(Age.at.Attendance ~ as.factor(No.Cancels), data=main_processed)
-t.test(Age.at.Attendance ~ No.Cancels, var.equal=FALSE, data=main_processed) #leveneTest is Ha
-wilcox.test(main_processed$Age.at.Attendance ~ main_processed$No.Cancels)
-
-### days difference between Attendance and Appointment/Booked just in Cancellation
+## attendance info in previous attendance
+### days difference between Attendance and Appointment/Booked in Cancellation
 leveneTest(daysDiff_attendanceAppoint ~ as.factor(No.Cancels), data=main_processed) #leveneTest is Ha
 t.test(daysDiff_attendanceAppoint ~ No.Cancels, var.equal=FALSE, data=main_processed)
 
 leveneTest(daysDiff_attendanceBooked ~ as.factor(No.Cancels), data=main_processed) #leveneTest is Ha
 t.test(daysDiff_attendanceBooked ~ No.Cancels, var.equal=FALSE, data=main_processed)
 
+## patient characteristics relevance
+CrossTable(main_processed$Gender, main_processed$No.Cancels, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
+
+CrossTable(main_processed$Age.at.Attendance.Cat.HSE, main_processed$No.Cancels, digits=2, fisher=F, chisq=TRUE, expected=TRUE) # age group
+leveneTest(Age.at.Attendance ~ as.factor(No.Cancels), data=main_processed)
+t.test(Age.at.Attendance ~ No.Cancels, var.equal=FALSE, data=main_processed) #leveneTest is Ha
+
+#CrossTable(main_processed$Area.of.Residence, main_processed$No.Cancels, digits=2, fisher=F, chisq=TRUE, expected=TRUE) # remove Na or impute where no residence
+CrossTable(main_processed$addressDiff, main_processed$No.Cancels, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
+
+CrossTable(main_processed$Reason.for.Cancellation.Desc, main_processed$Cancellation.Group, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Cancellation.Group, main_processed$Rebooked.Indicator, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Reason.for.Cancellation.Desc, main_processed$Rebooked.Indicator, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+
+
+# Do not attend correlation
+## clinic relevance
+CrossTable(main_processed$Clinic.Type, main_processed$No.DNAs, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Clinic.Code, main_processed$No.DNAs, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$NurseFlag, main_processed$No.DNAs, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Referral.Source, main_processed$No.DNAs, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Referring.Hospital, main_processed$No.DNAs, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Consultant, main_processed$No.DNAs, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Insurance.Scheme, main_processed$No.DNAs, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Eligibility, main_processed$No.DNAs, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Booking.Type, main_processed$No.DNAs, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Hospital.Catchment, main_processed$No.DNAs, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+
+## attendance info in previous attendance
+### days difference between Attendance and Appointment/Booked
+leveneTest(daysDiff_attendanceAppoint ~ as.factor(No.DNAs), data=main_processed) #leveneTest is Ha
+t.test(daysDiff_attendanceAppoint ~ No.DNAs, var.equal=FALSE, data=main_processed)
+
+leveneTest(daysDiff_attendanceBooked ~ as.factor(No.DNAs), data=main_processed) #leveneTest is Ha
+t.test(daysDiff_attendanceBooked ~ No.DNAs, var.equal=FALSE, data=main_processed)
+
+## patient characteristics relevance
+CrossTable(main_processed$Gender, main_processed$No.DNAs, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
+
+CrossTable(main_processed$Age.at.Attendance.Cat.HSE, main_processed$No.DNAs, digits=2, fisher=F, chisq=TRUE, expected=TRUE) # age group
+leveneTest(Age.at.Attendance ~ as.factor(No.DNAs), data=main_processed)
+t.test(Age.at.Attendance ~ No.DNAs, var.equal=FALSE, data=main_processed) #leveneTest is Ha
+
+#CrossTable(main_processed$Area.of.Residence, main_processed$No.DNAs, digits=2, fisher=F, chisq=TRUE, expected=TRUE) # remove Na or impute where no residence
+CrossTable(main_processed$addressDiff, main_processed$No.DNAs, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
+
+
 # Attendance correlation
-## Attendances/ Cancellations & Age, difference of days of appointments or bookings
+## clinic relevance
+CrossTable(main_processed$Clinic.Type, main_processed$No.Attendances, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Clinic.Code, main_processed$No.Attendances, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$NurseFlag, main_processed$No.Attendances, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Referral.Source, main_processed$No.Attendances, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Referring.Hospital, main_processed$No.Attendances, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Consultant, main_processed$No.Attendances, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Insurance.Scheme, main_processed$No.Attendances, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Eligibility, main_processed$No.Attendances, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Booking.Type, main_processed$No.Attendances, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Hospital.Catchment, main_processed$No.Attendances, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+
+## attendance info in previous attendances
+### days difference between Attendance and Appointment/Booked in Attendances: just one value in daysDiff, can't proceed statistical test
+
+## patient characteristics relevance
+CrossTable(main_processed$Gender, main_processed$No.Attendances, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
+
+CrossTable(main_processed$Age.at.Attendance.Cat.HSE, main_processed$No.Attendances, digits=2, fisher=F, chisq=TRUE, expected=TRUE) # age group
 ### Correlation of outcome and predictor (nominal and scale/ ordinal) # t-test if scale is parametric (normal distribution), wilcox if scale is nonparametric (not normal distribution)
 leveneTest(Age.at.Attendance ~ as.factor(No.Attendances), data=main_processed)
 t.test(Age.at.Attendance ~ No.Attendances, var.equal=TRUE, data=main_processed) #leveneTest is Ho
 
+#CrossTable(main_processed$Area.of.Residence, main_processed$No.Attendances, digits=2, fisher=F, chisq=TRUE, expected=TRUE) # remove Na or impute where no residence
+CrossTable(main_processed$addressDiff, main_processed$No.Attendances, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
+
+
+# New Attendance correlation
+## clinic relevance
+CrossTable(main_processed$Clinic.Type, main_processed$No.New.Attendances, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Clinic.Code, main_processed$No.New.Attendances, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$NurseFlag, main_processed$No.New.Attendances, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Referral.Source, main_processed$No.New.Attendances, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Referring.Hospital, main_processed$No.New.Attendances, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Consultant, main_processed$No.New.Attendances, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Insurance.Scheme, main_processed$No.New.Attendances, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Eligibility, main_processed$No.New.Attendances, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Booking.Type, main_processed$No.New.Attendances, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Hospital.Catchment, main_processed$No.New.Attendances, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+
+## attendance info in previous attendances
+### days difference between New Attendance and Appointment/Booked: just one level of value
+
+## patient characteristics relevance
+CrossTable(main_processed$Gender, main_processed$No.New.Attendances, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
+
+CrossTable(main_processed$Age.at.Attendance.Cat.HSE, main_processed$No.New.Attendances, digits=2, fisher=F, chisq=TRUE, expected=TRUE) # age group
 leveneTest(Age.at.Attendance ~ as.factor(No.New.Attendances), data=main_processed)
 t.test(Age.at.Attendance ~ No.New.Attendances, var.equal=FALSE, data=main_processed) #leveneTest is Ha
 wilcox.test(main_processed$Age.at.Attendance ~ main_processed$No.New.Attendances)
 
+CrossTable(main_processed$Area.of.Residence, main_processed$No.New.Attendances, digits=2, fisher=F, chisq=TRUE, expected=TRUE) # remove Na or impute where no residence
+CrossTable(main_processed$addressDiff, main_processed$No.New.Attendances, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
 ```
 
 # Build baseline model of cancellations with predictors, the smallest AIC provides the best model
 
-```{r model, echo=FALSE}
+```{r model of cancellation, echo=FALSE}
 ## with Clinic relevance
 logmodel1 <- glm(formula = No.Cancels ~ Clinic.Code + Clinic.Type + NurseFlag + Referral.Source + Consultant + Insurance.Scheme + Eligibility + Referring.Hospital + Booking.Type + Hospital.Catchment, family = binomial(link = "logit"), data = main_processed)
 summary(logmodel1)
