@@ -10,7 +10,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Data Source: Mater Dive Port 7
 # Load the file
-```{r load working space}
+```{r load working space, echo=FALSE}
 ## Load environment
 rm(list = ls())
 print(getwd())
@@ -26,11 +26,11 @@ library(dplyr) # CrossTable, install.packages("dplyr")
 library(ggplot2)
 library(qcc) #install
 library(sqldf)
-#library(Rcmdr)  #continuous var, numSummary function, install.packages("Rcmdr") ##not running if in hurry
+library(Rcmdr)  #continuous var, numSummary function, install.packages("Rcmdr") ##not running if in hurry
 library(gridExtra)  #graph
 
 library(Hmisc)  #Imputate missing values
-library(DMwR) #Compute the accuracy of imputation, but need to install the other packages
+#library(DMwR) #Compute the accuracy of imputation, but need to install the other packages
 
 library(psych) #install, describeBy
 library(moments)  #skewness,kurtosis
@@ -43,7 +43,10 @@ library(dunn.test) #install, non-parametric post-hoc test after Kruskal-Wallis
 library(stats)  #multiple regression lm() function, lapply function
 library(PerformanceAnalytics) #chart.Correlation (Scatterplot)
 
-library(caret) #classification & regression training, varImp
+library(caret) #classification & regression training, confusionMatrix, varImp
+library(rbenchmark) #plogis
+library(rcompanion) #nagelkerke
+library(regclass) #vif
 # library(C50)
 library(AppliedPredictiveModeling) #Scatterplot, install.packages('AppliedPredictiveModeling')
 # library(rpart)
@@ -73,27 +76,43 @@ counts [counts>0]
 print(is.data.frame(main))
 
 
+## Transforming data
+# main_group <- main_processed %>% group_by(main_processed$Medical.Record.Number) #library(moments)
+# main_group$freq_MRN_recode <- ifelse(count(main_group$Medical.Record.Number >= 34)==1,1,0)
+#library(plyr)
+main$Referral.Source_recode <- mapvalues(main$Referral.Source, from = c("C : CLINIC","G : GP","W : WARD","N : BREAST CHECK (NBSP)","H : OTHER HOSPITAL","S : SELF","O : OTHER CONSULTANT","R : ROOMS","A : EMERGENCY DEPT","B : HEALTH BOARD REFERRAL","F : FAMILY PLANNING","K : ED SMITHFIELD","V : VASCULAR LAB","X : HEALTH CENTRE REFERRAL","Q : REFERRED FROM CAWT INITIATIVE","D : DENTIST"), to = c("CLINIC","GP","WARD","BREAST CHECK (NBSP)","Elsewhere outside Mater","SELF","OTHER CONSULTANT","Elsewhere of Mater","EMERGENCY DEPT","Elsewhere outside Mater","Elsewhere of Mater","Elsewhere of Mater","Elsewhere of Mater","Elsewhere outside Mater","Elsewhere outside Mater","Elsewhere of Mater"))
+
+main$Eligibility_recode <- mapvalues(main$Eligibility, from = c("02 : CAT 2 (NON MEDICAL CARD)","01 : CAT 1 (MEDICAL CARD)","08 : ELIGIBILITY UNKNOWN","12 : DAY CASE - EXEMPT STAT. CHG.","19 : STAFF EXEMPT-STATUTORY CHARGE","35 : INFECTIOUS OR SUSPECTED INFECT","11 : ANTI D/RESEARCH/TRIAL","23 : NATIONAL COLORECTAL SCREENING","16 : NTPF - EXEMPT STAT. CHG.","06 : NON EU-VISITOR","24 : DIABETIC RETINA TREATMENT","07 : RTA","17 : ARMY - EXEMPT STAT. CHG.","10 : UK/NI - EXEMPT STAT.CHG.","21 : THE GOVERNOR - PRISONERS","13 : LONG STAY - EXEMPT STAT. CHG.","25 : UKRAINIAN CITIZEN","20 : HAA CARD HEALTH AMENDMENT ACT","18 : EHIC - EXEMPT STAT. CHG.","05 : EU-VISITOR NO EHIC","26 : U16 EXEMPT STAT. CHARGE","30 : PENDING PATIENT DETAILS"), to = c("CAT 2 (NON MEDICAL CARD)","CAT 1 (MEDICAL CARD)","ELIGIBILITY UNKNOWN","EXEMPT","EXEMPT","ACUTE UNCLASSIFIED","RESEARCH/NATIONAL PROG.","RESEARCH/NATIONAL PROG.","EXEMPT","CAT 2 (NON MEDICAL CARD)","NON ACUTE UNCLASSIFIED","ACUTE UNCLASSIFIED","EXEMPT","EXEMPT","EXEMPT","EXEMPT","EXEMPT","RESEARCH/NATIONAL PROG.","EXEMPT","CAT 2 (NON MEDICAL CARD)","EXEMPT","CAT 2 (NON MEDICAL CARD)"))
+
+location_out_IRL <- c("33","35","36")
+main$Area.of.Residence_recode <- ifelse(substring(main$Area.of.Residence,0,4)==c("3200","2300"),"Co.MEATH",ifelse(substring(main$Area.of.Residence,0,2)=="01","DUBLIN NTH", ifelse(substring(main$Area.of.Residence,0,2)=="02","DUBLIN STH", ifelse(substring(main$Area.of.Residence,0,2)=="00","UNKNOWN", ifelse(substring(main$Area.of.Residence,0,2)==location_out_IRL,"OUTSIDE IRELAND","OTHER COUNTIES")))))
+
+main$Booking.Type <- 
+
+main$Referring.Hospital <-
+
 ### Date calculation from Appointment/ Booking to Attendance
 main$Attendance.Date <- as.Date(main$Attendance.Date, format="%d/%m/%y")
 
 main$Appointment.Date <- as.POSIXct(main$Appointment.Date...Time,format="%Y%m%d %H:%M:%S",tz=Sys.timezone())
 main$Appointment.Date <- as.Date(main$Appointment.Date, format="%d/%m/%y")
+main$appointmentMonthYear <- substring(main$Appointment.Date,0,7)
+main$appointmentDay <- weekdays(main$Appointment.Date)
 
 main$Booked.Date <- as.POSIXct(main$Booked.Date,format="%Y/%m/%d",tz=Sys.timezone())
 main$Booked.Date_new <- as.Date(main$Booked.Date, format="%d/%m/%y")
+main$bookedMonthYear <- substring(main$Booked.Date,0,7)
+main$bookedDay <- weekdays(main$Booked.Date)
 
 main$daysDiff_attendanceAppoint <- difftime(main$Appointment.Date,main$Attendance.Date,units="days")
 main$daysDiff_attendanceBooked <- difftime(main$Booked.Date,main$Attendance.Date,units="days")
-
-#main$attendanceMonth <- substring(main$Attendance.MonthYear,0,2)
+main$daysDiff_AppointBooked <- difftime(main$Appointment.Date,main$Booked.Date,units="days")
 
 main$addressDiff <- ifelse(main$Present.Address == main$Home.Address, 0, 1)
 
 main$Rebooked.Indicator <- main$Rebooked.Indicator..HIS.
 
-main$Referral.Source_recode <- ifelse(main$Referral.Source 
-
-write.csv(main[,c("Record.Type","Clinic.Code","Clinic.Type","NurseFlag","Medical.Record.Number","Gender","Attendance.Day","Attendance.MonthYear","Attendance.Date","Attendance.Type.Description","Attendance.Year","Attendance.Month","Referral.Source","Consultant","Insurance.Scheme","Eligibility","Age.at.Attendance","Age.at.Attendance.Cat.HSE","Pathway.Number","Present.Address","Home.Address","Appointment.Date","Area.of.Residence","Referring.Hospital","Booking.Type","Booked.Date_new","Cancellation.Group","Reason.for.Cancellation.Desc","Rebooked.Indicator","Hospital.Catchment","No.Attendances","No.New.Attendances","No.Cancels","No.DNAs","daysDiff_attendanceAppoint","daysDiff_attendanceBooked","addressDiff")],"breastDetails.csv")
+write.csv(main[,c("Record.Type","Clinic.Code","Clinic.Type","NurseFlag","Medical.Record.Number","Gender","Attendance.Day","Attendance.MonthYear","Attendance.Date","Attendance.Type.Description","Attendance.Year","Attendance.Month","Referral.Source_recode","Consultant","Insurance.Scheme","Eligibility_recode","Age.at.Attendance","Age.at.Attendance.Cat.HSE","Pathway.Number","Present.Address","Home.Address","Appointment.Date","appointmentMonthYear","appointmentDay","Area.of.Residence_recode","Referring.Hospital","Booking.Type","Booked.Date_new","bookedMonthYear","bookedDay","Cancellation.Group","Reason.for.Cancellation.Desc","Rebooked.Indicator","Hospital.Catchment","No.Attendances","No.New.Attendances","No.Cancels","No.DNAs","daysDiff_attendanceAppoint","daysDiff_attendanceBooked","daysDiff_AppointBooked","addressDiff")],"breastDetails.csv")
 
 main_processed <- read.csv("breastDetails.csv")
 
@@ -127,19 +146,19 @@ table(main_processed$Record.Type,main_processed$Attendance.MonthYear)
 unique(main_processed$Clinic.Code)
 unique(main_processed$Clinic.Type)
 unique(main_processed$NurseFlag)
-unique(main_processed$Medical.Record.Number)
+#unique(main_processed$Medical.Record.Number)
 unique(main_processed$Gender)
 unique(main_processed$Attendance.Day)
 unique(main_processed$Attendance.MonthYear)
 unique(main_processed$Attendance.Type.Description)
 unique(main_processed$Attendance.Year)
 unique(main_processed$Attendance.Month)
-unique(main_processed$Referral.Source)
+unique(main_processed$Referral.Source_recode)
 unique(main_processed$Consultant)
 unique(main_processed$Insurance.Scheme)
-unique(main_processed$Eligibility)
+unique(main_processed$Eligibility_recode)
 unique(main_processed$Age.at.Attendance.Cat.HSE)
-unique(main_processed$Area.of.Residence)
+unique(main_processed$Area.of.Residence_recode)
 unique(main_processed$Referring.Hospital)
 unique(main_processed$Booking.Type)
 unique(main_processed$Cancellation.Group)
@@ -155,9 +174,9 @@ cbind(sort(table(main_processed$Clinic.Code),decreasing=TRUE),sort(100*round(pro
 
 cbind(sort(table(main_processed$NurseFlag),decreasing=TRUE),sort(100*round(prop.table(table(main_processed$NurseFlag)),5),deparse.level=2,decreasing=TRUE))
 
-cbind(sort(table(main_processed$Medical.Record.Number),decreasing=TRUE),sort(100*round(prop.table(table(main_processed$Medical.Record.Number)),5),deparse.level=2,decreasing=TRUE)) #group freq of MRN at 34
+head(cbind(sort(table(main_processed$Medical.Record.Number),decreasing=TRUE),sort(100*round(prop.table(table(main_processed$Medical.Record.Number)),5),deparse.level=2,decreasing=TRUE))) #group freq of MRN at 34
 
-cbind(sort(table(main_processed$Referral.Source),decreasing=TRUE),sort(100*round(prop.table(table(main_processed$Referral.Source)),5),deparse.level=2,decreasing=TRUE))
+cbind(sort(table(main_processed$Referral.Source_recode),decreasing=TRUE),sort(100*round(prop.table(table(main_processed$Referral.Source_recode)),5),deparse.level=2,decreasing=TRUE))
 
 cbind(sort(table(main_processed$Referring.Hospital),decreasing=TRUE),sort(100*round(prop.table(table(main_processed$Referring.Hospital)),5),deparse.level=2,decreasing=TRUE))
 
@@ -165,7 +184,7 @@ cbind(sort(table(main_processed$Consultant),decreasing=TRUE),sort(100*round(prop
 
 cbind(sort(table(main_processed$Insurance.Scheme),decreasing=TRUE),sort(100*round(prop.table(table(main_processed$Insurance.Scheme)),5),deparse.level=2,decreasing=TRUE))
 
-cbind(sort(table(main_processed$Eligibility),decreasing=TRUE),sort(100*round(prop.table(table(main_processed$Eligibility)),5),deparse.level=2,decreasing=TRUE))
+cbind(sort(table(main_processed$Eligibility_recode),decreasing=TRUE),sort(100*round(prop.table(table(main_processed$Eligibility_recode)),5),deparse.level=2,decreasing=TRUE))
 
 cbind(sort(table(main_processed$Booking.Type),decreasing=TRUE),sort(100*round(prop.table(table(main_processed$Booking.Type)),5),deparse.level=2,decreasing=TRUE))
 
@@ -195,16 +214,12 @@ cbind(sort(table(main_processed$Hospital.Catchment),decreasing=TRUE),sort(100*ro
 
 cbind(sort(table(main_processed$Gender),decreasing=TRUE),sort(100*round(prop.table(table(main_processed$Gender)),5),deparse.level=2,decreasing=TRUE))
 
-cbind(sort(table(main_processed$Area.of.Residence),decreasing=TRUE),sort(100*round(prop.table(table(main_processed$Area.of.Residence)),5),deparse.level=2,decreasing=TRUE))
+cbind(sort(table(main_processed$Area.of.Residence_recode),decreasing=TRUE),sort(100*round(prop.table(table(main_processed$Area.of.Residence_recode)),5),deparse.level=2,decreasing=TRUE))
 
 cbind(sort(table(main_processed$addressDiff),decreasing=TRUE),sort(100*round(prop.table(table(main_processed$addressDiff)),5),deparse.level=2,decreasing=TRUE))
 
 cbind(sort(table(main_processed$Age.at.Attendance.Cat.HSE),decreasing=TRUE),sort(100*round(prop.table(table(main_processed$Age.at.Attendance.Cat.HSE)),5),deparse.level=2,decreasing=TRUE))
 
-
-## Transforming data
-main_group <- main_processed %>% group_by(main_processed$Medical.Record.Number) #library(moments)
-main_group$freq_MRN_recode <- ifelse(count(main_group$Medical.Record.Number >= 34)==1,1,0)
 
 ## Predictor description (numeric)
 summary(main_processed$Age.at.Attendance)
@@ -322,8 +337,9 @@ boxplot(main_processed$daysDiff_attendanceBooked,horizontal = T)
 
 
 # Correlation of outcome and predictor (nominal and nominal)
-```{r correlation}
- # Total correlation 
+## Total correlation
+```{r correlation, total}
+ 
  ## Record Type & Clinic relevance
 CrossTable(main_processed$Clinic.Type, main_processed$Record.Type, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
 CrossTable(main_processed$Clinic.Code, main_processed$Record.Type, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
@@ -362,9 +378,11 @@ dunn_result <- dunn.test(main_processed$Age.at.Attendance, g=main_processed$Reco
 
 CrossTable(main_processed$Area.of.Residence, main_processed$Record.Type, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
 CrossTable(main_processed$addressDiff, main_processed$Record.Type, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+```
 
+## Cancellation correlation
+```{r correlation, cancellation}
 
-# Cancellation correlation
 ## clinic relevance
 CrossTable(main_processed$Clinic.Type, main_processed$No.Cancels, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
 CrossTable(main_processed$Clinic.Code, main_processed$No.Cancels, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
@@ -398,9 +416,11 @@ CrossTable(main_processed$addressDiff, main_processed$No.Cancels, digits=2, fish
 CrossTable(main_processed$Reason.for.Cancellation.Desc, main_processed$Cancellation.Group, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
 CrossTable(main_processed$Cancellation.Group, main_processed$Rebooked.Indicator, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
 CrossTable(main_processed$Reason.for.Cancellation.Desc, main_processed$Rebooked.Indicator, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+```
 
 
 # Do not attend correlation
+```{r correlation, DNA}
 ## clinic relevance
 CrossTable(main_processed$Clinic.Type, main_processed$No.DNAs, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
 CrossTable(main_processed$Clinic.Code, main_processed$No.DNAs, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
@@ -430,9 +450,11 @@ t.test(Age.at.Attendance ~ No.DNAs, var.equal=FALSE, data=main_processed) #leven
 
 #CrossTable(main_processed$Area.of.Residence, main_processed$No.DNAs, digits=2, fisher=F, chisq=TRUE, expected=TRUE) # remove Na or impute where no residence
 CrossTable(main_processed$addressDiff, main_processed$No.DNAs, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
+```
 
 
 # Attendance correlation
+```{r correlation, attendance}
 ## clinic relevance
 CrossTable(main_processed$Clinic.Type, main_processed$No.Attendances, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
 CrossTable(main_processed$Clinic.Code, main_processed$No.Attendances, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
@@ -458,9 +480,11 @@ t.test(Age.at.Attendance ~ No.Attendances, var.equal=TRUE, data=main_processed) 
 
 #CrossTable(main_processed$Area.of.Residence, main_processed$No.Attendances, digits=2, fisher=F, chisq=TRUE, expected=TRUE) # remove Na or impute where no residence
 CrossTable(main_processed$addressDiff, main_processed$No.Attendances, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
+```
 
 
 # New Attendance correlation
+```{r correlation, new attendance}
 ## clinic relevance
 CrossTable(main_processed$Clinic.Type, main_processed$No.New.Attendances, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
 CrossTable(main_processed$Clinic.Code, main_processed$No.New.Attendances, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
@@ -488,93 +512,98 @@ CrossTable(main_processed$Area.of.Residence, main_processed$No.New.Attendances, 
 CrossTable(main_processed$addressDiff, main_processed$No.New.Attendances, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
 ```
 
-# Build baseline model of cancellations with predictors, the smallest AIC provides the best model
+# Build baseline model of cancellations with predictors
+## the smallest AIC provides the best model
+## AUC (area under the ROC curve) measures the entire two-dimensional area underneath the entire ROC curve (receiver operating characteristic curve is a graph showing the performance of a classfication model at all classification thresholds). AUC ranges [0,1], is the probability that the model ranks a random positive example more highly than a random negative, the closer to 1 the more correct predictions
+## plogis
+## nagelkerke
+## confusionMatrix
+## vif >= 5-10 is large: model has problems estimating the coefficient (but doesn't degrade the quality of predictions), if vif >/(1-r^2) then that predictor is more related to the other predictors than it is to the response
 
-```{r model of cancellation, echo=FALSE}
+```{r model of cancellation}
 ## with Clinic relevance
-logmodel1 <- glm(formula = No.Cancels ~ Clinic.Code + Clinic.Type + NurseFlag + Referral.Source + Consultant + Insurance.Scheme + Eligibility + Referring.Hospital + Booking.Type + Hospital.Catchment, family = binomial(link = "logit"), data = main_processed)
+logmodel1 <- glm(formula = No.Cancels ~ Clinic.Code + Clinic.Type + Consultant + Insurance.Scheme + Hospital.Catchment, family = binomial(link = "logit"), data = main_processed) #run again after recode Referral.Source, Eligibility, Referring Hospital, Booking Type
 summary(logmodel1)
 
-logmodel1_re <- glm(formula = No.Cancels ~ Clinic.Code + Clinic.Type + Consultant + Eligibility + Booking.Type + Hospital.Catchment, family = binomial(link = "logit"), data = main_processed)
-summary(logmodel1_re)
-
-exp(coefficients(logmodel1_re))
-# predicted1 <- plogis(predict(logmodel1_re, main_processed))
-# nagelkerke(logmodel1_re)
-# confusionMatrix(main_processed$No.Cancels, predicted1, thresholder=0.8)
+exp(coefficients(logmodel1))
+# predicted1 <- plogis(predict(logmodel1, main_processed)) #library(rbenchmark)
+nagelkerke(logmodel1) #library(rcompanion)
+# confusionMatrix(main_processed$No.Cancels, predicted1, thresholder=0.8) #library(caret)
 # sensitivity(main_processed$No.Cancels, predicted1, thresholder=0.8)
 # specificity(main_processed$No.Cancels, predicted1, thresholder=0.8)
-vif(logmodel1_re)
+# vif(logmodel1) #library(regclass)
 
-lroc(logmodel1_re, graph=TRUE) #library(epiDisplay), give plot plus AUC
+lroc(logmodel1, graph=TRUE) #library(epiDisplay), give plot plus AUC
 
 
-## with Attendance relevance
-logmodel2 <- glm(formula = No.Cancels ~ Attendance.Day + Attendance.Month + Attendance.Year + Attendance.MonthYear + Attendance.Type.Description, family = binomial(link = "logit"), data = main_processed)
+## with Date relevance
+logmodel2 <- glm(formula = No.Cancels ~ appointmentDay + appointmentMonthYear + bookedDay + bookedMonthYear, family = binomial(link = "logit"), data = main_processed)
 summary(logmodel2)
 
-logmodel2_re <- glm(formula = No.Cancels ~ Attendance.Day + Attendance.MonthYear + Attendance.Type.Description, family = binomial(link = "logit"), data = main_processed)
-summary(logmodel2_re)
-
-exp(coefficients(logmodel2_re))
-# predicted2 <- plogis(predict(logmodel2_re, main_processed))
-# nagelkerke(logmodel2_re)
+exp(coefficients(logmodel2))
+# predicted2 <- plogis(predict(logmodel2, main_processed))
+nagelkerke(logmodel2)
 # confusionMatrix(main_processed$No.Cancels, predicted2, thresholder=0.8)
 # sensitivity(main_processed$No.Cancels, predicted2, thresholder=0.8)
 # specificity(main_processed$No.Cancels, predicted2, thresholder=0.8)
-vif(logmodel2_re)
+# vif(logmodel2)
 
-lroc(logmodel2_re, graph=TRUE)
+lroc(logmodel2, graph=TRUE)
 
 ## with Patient relevance
-logmodel3 <- glm(formula = No.Cancels ~ Gender + Age.at.Attendance.Cat.HSE + Area.of.Residence + addressDiff, family = binomial(link = "logit"), data = main_processed)
+logmodel3 <- glm(formula = No.Cancels ~ Gender + Age.at.Attendance + Area.of.Residence + addressDiff, family = binomial(link = "logit"), data = main_processed)
 summary(logmodel3)
 
 exp(coefficients(logmodel3))
 # predicted3 <- plogis(predict(logmodel3, main_processed))
-# nagelkerke(logmodel3)
+nagelkerke(logmodel3)
 # confusionMatrix(main_processed$No.Cancels, predicted3, thresholder=0.8)
 # sensitivity(main_processed$No.Cancels, predicted3, thresholder=0.8)
 # specificity(main_processed$No.Cancels, predicted3, thresholder=0.8)
-vif(logmodel3)
+# vif(logmodel3)
 
 lroc(logmodel3, graph=TRUE)
 
 ## with all predictors
-logmodel <- glm(formula = No.Cancels ~ Gender + Age.at.Attendance.Cat.HSE + Area.of.Residence + addressDiff + Clinic.Code + Clinic.Type + Consultant + Eligibility + Booking.Type + Hospital.Catchment + Attendance.Day + Attendance.MonthYear + Attendance.Type.Description, family = binomial(link = "logit"), data = main_processed)
+logmodel <- glm(formula = No.Cancels ~ Gender + Age.at.Attendance + Area.of.Residence + addressDiff + Clinic.Code + Clinic.Type + Consultant + Insurance.Scheme + Hospital.Catchment + appointmentDay + appointmentMonthYear + bookedDay + bookedMonthYear, family = binomial(link = "logit"), data = main_processed)
 summary(logmodel)
 
 exp(coefficients(logmodel))
 # predicted <- plogis(predict(logmodel, main_processed))
-# nagelkerke(logmodel)
+nagelkerke(logmodel)
 # confusionMatrix(main_processed$No.Cancels, predicted, thresholder=0.8)
 # sensitivity(main_processed$No.Cancels, predicted, thresholder=0.8)
 # specificity(main_processed$No.Cancels, predicted, thresholder=0.8)
-vif(logmodel)
+# vif(logmodel)
 
 lroc(logmodel, graph=TRUE)
 
 ```
 # Comparing models
-```{r comparing models, echo=FALSE}
-anova(logmodel1_re, logmodel2_re, logmodel3, logmodel, test="Chisq")
+```{r comparing models}
+anova(logmodel1, logmodel2, logmodel3, logmodel, test="Chisq")
 #library(survey)
 regTermTest(logmodel,"Clinic.Code")
 regTermTest(logmodel,"Clinic.Type")
 regTermTest(logmodel,"Consultant")
-regTermTest(logmodel,"Eligibility")
-regTermTest(logmodel,"Booking.Type")
+# regTermTest(logmodel,"Eligibility")
+# regTermTest(logmodel,"Booking.Type")
 #regTermTest(logmodel,"Hospital.Catchment")
-regTermTest(logmodel,"Attendance.Day")
-regTermTest(logmodel,"Attendance.MonthYear")
-#regTermTest(logmodel,"Attendance.Type.Description")
+regTermTest(logmodel,"appointmentDay")
+regTermTest(logmodel,"appointmentMonthYear")
+regTermTest(logmodel,"bookedDay")
+regTermTest(logmodel,"bookedMonthYear")
 regTermTest(logmodel,"Gender")
-regTermTest(logmodel,"Age.at.Attendance.Cat.HSE")
+regTermTest(logmodel,"Age.at.Attendance")
 regTermTest(logmodel,"Area.of.Residence")
 regTermTest(logmodel,"addressDiff")
 
 #library(caret)
 varImp(logmodel)
 ```
+
+# Build baseline model of DNA with predictors, the smallest AIC provides the best model
+# Build baseline model of attendances with predictors, the smallest AIC provides the best model
+# Build baseline model of new attendances with predictors, the smallest AIC provides the best model
 
 Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
