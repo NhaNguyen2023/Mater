@@ -84,8 +84,28 @@ main$Referral.Source_recode <- mapvalues(main$Referral.Source, from = c("C : CLI
 
 main$Eligibility_recode <- mapvalues(main$Eligibility, from = c("02 : CAT 2 (NON MEDICAL CARD)","01 : CAT 1 (MEDICAL CARD)","08 : ELIGIBILITY UNKNOWN","12 : DAY CASE - EXEMPT STAT. CHG.","19 : STAFF EXEMPT-STATUTORY CHARGE","35 : INFECTIOUS OR SUSPECTED INFECT","11 : ANTI D/RESEARCH/TRIAL","23 : NATIONAL COLORECTAL SCREENING","16 : NTPF - EXEMPT STAT. CHG.","06 : NON EU-VISITOR","24 : DIABETIC RETINA TREATMENT","07 : RTA","17 : ARMY - EXEMPT STAT. CHG.","10 : UK/NI - EXEMPT STAT.CHG.","21 : THE GOVERNOR - PRISONERS","13 : LONG STAY - EXEMPT STAT. CHG.","25 : UKRAINIAN CITIZEN","20 : HAA CARD HEALTH AMENDMENT ACT","18 : EHIC - EXEMPT STAT. CHG.","05 : EU-VISITOR NO EHIC","26 : U16 EXEMPT STAT. CHARGE","30 : PENDING PATIENT DETAILS"), to = c("CAT 2 (NON MEDICAL CARD)","CAT 1 (MEDICAL CARD)","ELIGIBILITY UNKNOWN","EXEMPT","EXEMPT","ACUTE UNCLASSIFIED","RESEARCH/NATIONAL PROG.","RESEARCH/NATIONAL PROG.","EXEMPT","CAT 2 (NON MEDICAL CARD)","NON ACUTE UNCLASSIFIED","ACUTE UNCLASSIFIED","EXEMPT","EXEMPT","EXEMPT","EXEMPT","EXEMPT","RESEARCH/NATIONAL PROG.","EXEMPT","CAT 2 (NON MEDICAL CARD)","EXEMPT","CAT 2 (NON MEDICAL CARD)"))
 
-location_out_IRL <- c("33","35","36")
-main$Area.of.Residence_recode <- ifelse(substring(main$Area.of.Residence,0,4)==c("3200","2300"),"Co.MEATH",ifelse(substring(main$Area.of.Residence,0,2)=="01","DUBLIN NTH", ifelse(substring(main$Area.of.Residence,0,2)=="02","DUBLIN STH", ifelse(substring(main$Area.of.Residence,0,2)=="00","UNKNOWN", ifelse(substring(main$Area.of.Residence,0,2)==location_out_IRL,"OUTSIDE IRELAND","OTHER COUNTIES")))))
+location_out_IRL <- c("33","35","36") # define the vector of codes for outside Ireland
+n <- length(main$Area.of.Residence) # find the length of area of residence vector
+location_out_IRL <- rep(location_out_IRL, length.out = n) # repeat the values of location_out_IRL n times
+
+area_recode <- c("32","23") # define the vector of codes for area recode
+n <- length(substring(main$Area.of.Residence,0,2)) # find the length of area of residence vector
+area_recode <- rep(area_recode, length.out = n) # repeat the values of location_out_IRL n times
+
+dublin_nth <- c("0100","0101","0103","0105","0107","0109","0111","0113","0115","0117")
+dublin_sth <- c("0200","0202","0204","0206","0208","0210","0212","0214","0216","0218""0220","0222","0224")
+outside_irl <- c("3303","3310","3350","3501","3600")
+df <- df %>% 
+ mutate(variable = case_when(
+  value %in% dublin_nth ~ "DUBLIN NTH",
+  value %in% dublin_sth ~ "DUBLIN STH",
+  value %in% outside_irl ~ "OUTSIDE IRELAND",
+  value == "3200" ~ "Co.Meath",
+  TRUE ~ "Other counties"
+))
+head (df,10)
+
+main$Area.of.Residence_recode <- ifelse(substring(main$Area.of.Residence,0,2) == area_recode,"Co.MEATH",ifelse(substring(main$Area.of.Residence,0,2)=="01","DUBLIN NTH", ifelse(substring(main$Area.of.Residence,0,2)=="02","DUBLIN STH", ifelse(substring(main$Area.of.Residence,0,2)=="0000 : UNKNOWN","UNKNOWN", ifelse(substring(main$Area.of.Residence,0,2)==location_out_IRL,"OUTSIDE IRELAND","OTHER COUNTIES")))))
 
 main$Booking.Type <- 
 
