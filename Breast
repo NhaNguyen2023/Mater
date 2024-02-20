@@ -529,8 +529,10 @@ CrossTable(main_processed$addressDiff, main_processed$No.New.Attendances, digits
 # Build baseline model of cancellations with predictors
 ## the smallest AIC provides the best model
 ## AUC (area under the ROC curve) measures the entire two-dimensional area underneath the entire ROC curve (receiver operating characteristic curve is a graph showing the performance of a classfication model at all classification thresholds). AUC ranges [0,1], is the probability that the model ranks a random positive example more highly than a random negative, the closer to 1 the more correct predictions
-## plogis
-## nagelkerke
+## predict: predict the values based on the previous data behaviors and thus by fitting that data to the model
+## plogis: Logistic Cumulative Distribution Function
+## Cox and Snell R square: Analysis_Survival_Cox Regression. The coefficients in a Cox regression relate to hazard; a positive coefficient indicates a worse prognosis and a negative coefficient indicates a protective effect of the variable with which it is associated. It assume that the effects of the predictor variables upon survival are constant over time and are additive in one scale
+## nagelkerke: a measure of goodness of fit in logistic regression analysis, a modification of the Cox and Snell R Square (likelihood ratio test statistic, an alternative index of goodness of fit related to the R2 value from linear regression). Ranges [0,1], closer to 1 indicating a better fit of the model. However, Nagelkerke R Square cannot be interpreted as easily. A common rule of thumb (<= 0.2: weak relationship, 0.2-0.4: moderate, >= 0.4: strong relationship). It's important to note that the interpretation of Nagelkerke R Square should be taken with caution and should be supplemented by other measures of model fit, such as the Hosmer-Lemeshow test, AIC
 ## confusionMatrix
 ## vif >= 5-10 is large: model has problems estimating the coefficient (but doesn't degrade the quality of predictions), if vif >/(1-r^2) then that predictor is more related to the other predictors than it is to the response
 
@@ -617,7 +619,7 @@ varImp(logmodel)
 ```
 
 # Build baseline model of DNA with predictors, the smallest AIC provides the best model
-# Build baseline model of attendances with predictors, the smallest AIC provides the best model
+
 # Build baseline model of new attendances with predictors, the smallest AIC provides the best model
 
 Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
