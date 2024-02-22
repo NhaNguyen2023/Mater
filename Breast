@@ -26,7 +26,7 @@ library(dplyr) # CrossTable, install.packages("dplyr")
 library(ggplot2)
 library(qcc) #install
 library(sqldf)
-library(Rcmdr)  #continuous var, numSummary function, install.packages("Rcmdr") ##not running if in hurry
+# library(Rcmdr)  #continuous var, numSummary function, install.packages("Rcmdr") ##not running if in hurry
 library(gridExtra)  #graph
 
 library(Hmisc)  #Imputate missing values
@@ -51,7 +51,7 @@ library(regclass) #vif
 library(AppliedPredictiveModeling) #Scatterplot, install.packages('AppliedPredictiveModeling')
 # library(rpart)
 # library(rpart.plot)
-# library(pROC)  #cross validation
+library(pROC)  #cross validation
 library(gmodels)  #Evaluate the model, CrossTable correlation, install.packages("gmodels")
 library(epiDisplay) #plot with AUC for model prediction
 library(survey) #comparing models, regTermTest
@@ -80,7 +80,7 @@ print(is.data.frame(main))
 # main_group <- main_processed %>% group_by(main_processed$Medical.Record.Number) #library(moments)
 # main_group$freq_MRN_recode <- ifelse(count(main_group$Medical.Record.Number >= 34)==1,1,0)
 #library(plyr)
-main$Referral.Source_recode <- mapvalues(main$Referral.Source, from = c("C : CLINIC","G : GP","W : WARD","N : BREAST CHECK (NBSP)","H : OTHER HOSPITAL","S : SELF","O : OTHER CONSULTANT","R : ROOMS","A : EMERGENCY DEPT","B : HEALTH BOARD REFERRAL","F : FAMILY PLANNING","K : ED SMITHFIELD","V : VASCULAR LAB","X : HEALTH CENTRE REFERRAL","Q : REFERRED FROM CAWT INITIATIVE","D : DENTIST"), to = c("CLINIC","GP","WARD","BREAST CHECK (NBSP)","Elsewhere outside Mater","SELF","OTHER CONSULTANT","Elsewhere of Mater","EMERGENCY DEPT","Elsewhere outside Mater","Elsewhere of Mater","Elsewhere of Mater","Elsewhere of Mater","Elsewhere outside Mater","Elsewhere outside Mater","Elsewhere of Mater"))
+main$Referral.Source_recode <- mapvalues(main$Referral.Source, from = c("C : CLINIC","G : GP","W : WARD","N : BREAST CHECK (NBSP)","H : OTHER HOSPITAL","S : SELF","O : OTHER CONSULTANT","R : ROOMS","A : EMERGENCY DEPT","B : HEALTH BOARD REFERRAL","F : FAMILY PLANNING","K : ED SMITHFIELD","V : VASCULAR LAB","X : HEALTH CENTRE REFERRAL","Q : REFERRED FROM CAWT INITIATIVE","D : DENTIST"), to = c("CLINIC","GP","WARD","BREAST CHECK (NBSP)","Elsewhere outside Mater","Elsewhere outside Mater","OTHER CONSULTANT","Elsewhere of Mater","EMERGENCY DEPT","Elsewhere outside Mater","Elsewhere of Mater","Elsewhere of Mater","Elsewhere of Mater","Elsewhere outside Mater","Elsewhere outside Mater","Elsewhere of Mater"))
 
 main$Eligibility_recode <- mapvalues(main$Eligibility, from = c("02 : CAT 2 (NON MEDICAL CARD)","01 : CAT 1 (MEDICAL CARD)","08 : ELIGIBILITY UNKNOWN","12 : DAY CASE - EXEMPT STAT. CHG.","19 : STAFF EXEMPT-STATUTORY CHARGE","35 : INFECTIOUS OR SUSPECTED INFECT","11 : ANTI D/RESEARCH/TRIAL","23 : NATIONAL COLORECTAL SCREENING","16 : NTPF - EXEMPT STAT. CHG.","06 : NON EU-VISITOR","24 : DIABETIC RETINA TREATMENT","07 : RTA","17 : ARMY - EXEMPT STAT. CHG.","10 : UK/NI - EXEMPT STAT.CHG.","21 : THE GOVERNOR - PRISONERS","13 : LONG STAY - EXEMPT STAT. CHG.","25 : UKRAINIAN CITIZEN","20 : HAA CARD HEALTH AMENDMENT ACT","18 : EHIC - EXEMPT STAT. CHG.","05 : EU-VISITOR NO EHIC","26 : U16 EXEMPT STAT. CHARGE","30 : PENDING PATIENT DETAILS"), to = c("CAT 2 (NON MEDICAL CARD)","CAT 1 (MEDICAL CARD)","ELIGIBILITY UNKNOWN","EXEMPT","EXEMPT","ACUTE UNCLASSIFIED","RESEARCH/NATIONAL PROG.","RESEARCH/NATIONAL PROG.","EXEMPT","CAT 2 (NON MEDICAL CARD)","NON ACUTE UNCLASSIFIED","ACUTE UNCLASSIFIED","EXEMPT","EXEMPT","EXEMPT","EXEMPT","EXEMPT","RESEARCH/NATIONAL PROG.","EXEMPT","CAT 2 (NON MEDICAL CARD)","EXEMPT","CAT 2 (NON MEDICAL CARD)"))
 
@@ -105,7 +105,7 @@ main <- main %>%     #library(plyr)
 head (main$Area.of.Residence_recode,10)
 table(main$Area.of.Residence_recode)
 
-main$Booking.Type_recode <- ifelse(unique(main$Medical.Record.Number)==TRUE, main$Booking.Type == "N : NEW", "R : RETURN")
+main$Booking.Type_recode <- ifelse(main$Booking.Type == ":", ifelse(!duplicated(main$Medical.Record.Number), "N : NEW", "R : RETURN"), main$Booking.Type)
 
 # main$Referring.Hospital <-
 
@@ -133,7 +133,9 @@ main$Rebooked.Indicator <- main$Rebooked.Indicator..HIS.
 write.csv(main[,c("Record.Type","Clinic.Code","Clinic.Type","NurseFlag","Medical.Record.Number","Gender","Attendance.Day","Attendance.MonthYear","Attendance.Date","Attendance.Type.Description","Attendance.Year","Attendance.Month","Referral.Source_recode","Consultant","Insurance.Scheme","Eligibility_recode","Age.at.Attendance","Age.at.Attendance.Cat.HSE","Pathway.Number","Present.Address","Home.Address","Appointment.Date","appointmentMonthYear","appointmentDay","Area.of.Residence_recode","Referring.Hospital","Booking.Type_recode","Booked.Date_new","bookedMonthYear","bookedDay","Cancellation.Group","Reason.for.Cancellation.Desc","Rebooked.Indicator","Hospital.Catchment","No.Attendances","No.New.Attendances","No.Cancels","No.DNAs","daysDiff_attendanceAppoint","daysDiff_attendanceBooked","daysDiff_AppointBooked","addressDiff")],"breastDetails.csv")
 
 main_processed <- read.csv("breastDetails.csv")
-main_probessed_tibble <- as.tibble(main_processed) #library(tidyverse), tibble never changes [the type of the inputs, the names of variables], it only recycles inputs of length 1, and never creates row.names()
+# main_processed <- as.matrix(main_processed) #convert data frame main_processed to matrix to replace NaN values
+# main_processed <- replace(main_processed, is.nan(main_processed), 9999)
+# main_processed_tibble <- as_tibble(main_processed) #library(tidyverse), tibble never changes [the type of the inputs, the names of variables], it only recycles inputs of length 1, and never creates row.names()
 
 ```
 
@@ -295,71 +297,10 @@ boxplot(main_processed$daysDiff_attendanceAppoint,horizontal = T)
 hist(main_processed$daysDiff_attendanceBooked)
 boxplot(main_processed$daysDiff_attendanceBooked,horizontal = T)
 
-# count_clinic.type <- sort(table(breast_attendance$Clinic.Type,breast_attendance$Year),decreasing=TRUE)
-# 
-# bp_clinicType <- barplot(count_clinic.type, main="Clinic type by year",
-#                          xlab="Number of Attendance", col=c("blue","green"),
-#                          legend = rownames(count_clinic.type),beside = TRUE)
-# count_clinic.type2019 <- table(breast2019$Clinic.Type)
-# bp2019_clinicType <- barplot(count_clinic.type2019)
-# count_clinic.type2020 <- table(breast2020$Clinic.Type)
-# barplot(count_clinic.type2020)
-# count_clinic.type2021 <- table(breast2021$Clinic.Type)
-# barplot(count_clinic.type2021)
-# count_clinic.type2022 <- table(breast2022$Clinic.Type)
-# barplot(count_clinic.type2022)
-# count_clinic.type2023 <- table(breast2023$Clinic.Type)
-# barplot(count_clinic.type2023)
-# grid.arrange(count_clinic.type,count_clinic.type2023,count_clinic.type2022,count_clinic.type2021,count_clinic.type2020,count_clinic.type2019,ncol=1)
-# 
-# 
+# d <- ggplot(main_processed, aes(x = reorder(Clinic.Type, -count(Clinic.Type)), y=count(Clinic.Type))) +
+#   geom_bar(color = "blue", fill="lightblue")
+# d
 
-# qqnorm(breast2023_sub$Age.at.Attendance)
-# qqline(breast2023_sub$Age.at.Attendance, col=2)
-# boxplot(breast2023_sub$Age.at.Attendance)
-# skewness((breast2023_sub$Age.at.Attendance),na.rm = T)
-# kurtosis((breast2023_sub$Age.at.Attendance),na.rm = T)
-# 
-# cutoffabove_breast <- 50 + 1.5*IQR(breast2023_sub$Age.at.Attendance,na.rm = T)
-# cutoffbelow_breast <- 50 - 1.5*IQR(breast2023_sub$Age.at.Attendance,na.rm = T)
-# breast2023_sub <- subset(breast2023_sub, Age.at.Attendance <= cutoffabove_breast & Age.at.Attendance >= cutoffbelow_breast)
-# summary(breast2023_sub$Age.at.Attendance)
-# q1 <- qplot(x = Age.at.Attendance, data = breast2023_sub, colour=I("red"), fill=I("white")) +
-#   theme_bw() +
-#   theme(
-#     plot.background = element_blank()
-#     ,panel.grid.major = element_blank()
-#     ,panel.grid.minor = element_blank()
-#     ,panel.border = element_blank()
-#   ) +
-#   theme(axis.line = element_line(color = 'red'))
-# q2 <- qplot(x = Age.at.Attendance, data = breast2023_sub, colour=I("blue"), fill=I("white")) + 
-#   scale_x_continuous(limits = c(0,100)) +
-#   theme_bw() +
-#   theme(
-#     plot.background = element_blank()
-#     ,panel.grid.major = element_blank()
-#     ,panel.grid.minor = element_blank()
-#     ,panel.border = element_blank()
-#   ) +
-#   theme(axis.line = element_line(color = 'blue'))
-# grid.arrange(q1, q2, ncol=1)
-# 
-# # Test normality of numeric variables
-# set.seed(0)
-# breast_attendance_sub <- breast_attendance[1:5000,] #in shapiro.test, sample size must be between 3 and 5000
-# 
-# shapiro.test(breast_attendance_sub$X)
-# 
-# shapiro.test(breast_attendance_sub$Age.at.Attendance)
-# skewness((breast_attendance_sub$Age.at.Attendance),na.rm=T)
-# kurtosis((breast_attendance_sub$Age.at.Attendance),na.rm=T)
-# 
-# shapiro.test(breast_attendance_sub$daysDiff)
-# skewness((breast_attendance_sub$daysDiff),na.rm=T)
-# kurtosis((breast_attendance_sub$daysDiff),na.rm=T)
-# 
-# pareto.chart(breast_attendance$Referral.Source)
 ```
 
 
@@ -380,8 +321,7 @@ CrossTable(main_processed$Booking.Type_recode, main_processed$Record.Type, digit
 CrossTable(main_processed$Hospital.Catchment, main_processed$Record.Type, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
 CrossTable(main_processed$bookedDay, main_processed$Record.Type, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
 CrossTable(main_processed$bookedMonthYear, main_processed$Record.Type, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
-CrossTable(main_processed$appointmentDay, main_processed$Record.Type, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
-CrossTable(main_processed$appointmentMonthYear, main_processed$Record.Type, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+
 
 ## Record Type & Attendance relevance
 CrossTable(main_processed$Attendance.Day, main_processed$Record.Type, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
@@ -399,9 +339,6 @@ bartlett.test(main_processed$daysDiff_attendanceBooked,main_processed$Record.Typ
 kruskal.test(main_processed$daysDiff_attendanceBooked ~ main_processed$Record.Type, data=main_processed)
 dunn_result <- dunn.test(main_processed$daysDiff_attendanceBooked, g=main_processed$Record.Type, method="bonferroni")
 
-bartlett.test(main_processed$daysDiff_AppointmentBooked,main_processed$Record.Type)
-kruskal.test(main_processed$daysDiff_AppointmentBooked ~ main_processed$Record.Type, data=main_processed)
-dunn_result <- dunn.test(main_processed$daysDiff_AppointmentBooked, g=main_processed$Record.Type, method="bonferroni")
 
 ## Record Type & Patient characteristics relevance
 CrossTable(main_processed$Gender, main_processed$Record.Type, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
@@ -413,11 +350,12 @@ dunn_result <- dunn.test(main_processed$Age.at.Attendance, g=main_processed$Reco
 
 CrossTable(main_processed$Area.of.Residence_recode, main_processed$Record.Type, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
 CrossTable(main_processed$addressDiff, main_processed$Record.Type, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+
 ```
 
-## Cancellation correlation
-```{r correlation, cancellation}
-
+## Cancellation & DNA correlation
+```{r correlation, cancellation & DNA}
+# cancellation (No.Cancels=1) & DNA (No.Cancels=0)
 ## clinic relevance
 CrossTable(main_processed$Clinic.Type, main_processed$No.Cancels, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
 CrossTable(main_processed$Clinic.Code, main_processed$No.Cancels, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
@@ -430,16 +368,19 @@ CrossTable(main_processed$Eligibility_recode, main_processed$No.Cancels, digits=
 CrossTable(main_processed$Booking.Type_recode, main_processed$No.Cancels, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
 CrossTable(main_processed$Hospital.Catchment, main_processed$No.Cancels, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
 CrossTable(main_processed$bookedDay, main_processed$No.Cancels, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
-CrossTable(main_processed$bookedMonthYear, main_processed$No.Cancels, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+
+main_processed_subset <- subset(main_processed, year(main_processed$Booked.Date_new) > 2019) #create the subset for cancellations (from the hospital) have started since CoVID
+CrossTable(main_processed_subset$bookedMonthYear, main_processed_subset$No.Cancels, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+
 CrossTable(main_processed$appointmentDay, main_processed$No.Cancels, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
 CrossTable(main_processed$appointmentMonthYear, main_processed$No.Cancels, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
 
 ## booking relevance
 ### difference between Booked and Appointment factors in Cancellation
-CrossTable(main_processed$Rebooked.Indicator, main_processed$No.Cancels, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Rebooked.Indicator, main_processed$No.Cancels, digits=2, fisher=T, chisq=TRUE, expected=TRUE)
 
-leveneTest(daysDiff_AppointmentBooked ~ as.factor(No.Cancels), data=main_processed) #leveneTest is ..
-t.test(daysDiff_AppointmentBooked ~ No.Cancels, var.equal=.., data=main_processed)
+leveneTest(daysDiff_AppointBooked ~ as.factor(No.Cancels), data=main_processed) #leveneTest is Ha
+t.test(daysDiff_AppointBooked ~ No.Cancels, var.equal=F, data=main_processed)
 
 ## patient characteristics relevance
 CrossTable(main_processed$Gender, main_processed$No.Cancels, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
@@ -448,7 +389,7 @@ CrossTable(main_processed$Age.at.Attendance.Cat.HSE, main_processed$No.Cancels, 
 leveneTest(Age.at.Attendance ~ as.factor(No.Cancels), data=main_processed)
 t.test(Age.at.Attendance ~ No.Cancels, var.equal=FALSE, data=main_processed) #leveneTest is Ha
 
-#CrossTable(main_processed$Area.of.Residence_recode, main_processed$No.Cancels, digits=2, fisher=F, chisq=TRUE, expected=TRUE) # remove Na or impute where no residence
+CrossTable(main_processed$Area.of.Residence_recode, main_processed$No.Cancels, digits=2, fisher=F, chisq=TRUE, expected=TRUE) # remove Na or impute where no residence
 CrossTable(main_processed$addressDiff, main_processed$No.Cancels, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
 
 CrossTable(main_processed$Reason.for.Cancellation.Desc, main_processed$Cancellation.Group, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
@@ -477,8 +418,8 @@ CrossTable(main_processed$appointmentMonthYear, main_processed$No.DNAs, digits=2
 
 ## booking relevance
 ### days difference between Appointment and Booked date
-leveneTest(daysDiff_AppointmentBooked ~ as.factor(No.DNAs), data=main_processed) #leveneTest is ..
-t.test(daysDiff_AppointmentBooked ~ No.DNAs, var.equal=.., data=main_processed)
+leveneTest(daysDiff_AppointBooked ~ as.factor(No.DNAs), data=main_processed) #leveneTest is Ha
+t.test(daysDiff_AppointBooked ~ No.DNAs, var.equal=F, data=main_processed)
 
 ## patient characteristics relevance
 CrossTable(main_processed$Gender, main_processed$No.DNAs, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
@@ -507,12 +448,11 @@ CrossTable(main_processed$Booking.Type_recode, main_processed$No.New.Attendances
 CrossTable(main_processed$Hospital.Catchment, main_processed$No.New.Attendances, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
 CrossTable(main_processed$bookedDay, main_processed$No.New.Attendances, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
 CrossTable(main_processed$bookedMonthYear, main_processed$No.New.Attendances, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
-CrossTable(main_processed$appointmentDay, main_processed$No.New.Attendances, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
-CrossTable(main_processed$appointmentMonthYear, main_processed$No.New.Attendances, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+
 
 ## difference between New Attendance and booking
-leveneTest(daysDiff_attendanceBooked ~ as.factor(No.New.Attendances), data=main_processed) #leveneTest is ..
-t.test(daysDiff_attendanceBooked ~ No.New.Attendances, var.equal=.., data=main_processed)
+leveneTest(daysDiff_attendanceBooked ~ as.factor(No.New.Attendances), data=main_processed) #leveneTest is Ha
+t.test(daysDiff_attendanceBooked ~ No.New.Attendances, var.equal=F, data=main_processed)
 
 ## patient characteristics relevance
 CrossTable(main_processed$Gender, main_processed$No.New.Attendances, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
@@ -527,99 +467,160 @@ CrossTable(main_processed$addressDiff, main_processed$No.New.Attendances, digits
 ```
 
 # Build baseline model of cancellations with predictors
-## the smallest AIC provides the best model
-## AUC (area under the ROC curve) measures the entire two-dimensional area underneath the entire ROC curve (receiver operating characteristic curve is a graph showing the performance of a classfication model at all classification thresholds). AUC ranges [0,1], is the probability that the model ranks a random positive example more highly than a random negative, the closer to 1 the more correct predictions
-## predict: predict the values based on the previous data behaviors and thus by fitting that data to the model
-## plogis: Logistic Cumulative Distribution Function
-## Cox and Snell R square: Analysis_Survival_Cox Regression. The coefficients in a Cox regression relate to hazard; a positive coefficient indicates a worse prognosis and a negative coefficient indicates a protective effect of the variable with which it is associated. It assume that the effects of the predictor variables upon survival are constant over time and are additive in one scale
-## nagelkerke: a measure of goodness of fit in logistic regression analysis, a modification of the Cox and Snell R Square (likelihood ratio test statistic, an alternative index of goodness of fit related to the R2 value from linear regression). Ranges [0,1], closer to 1 indicating a better fit of the model. However, Nagelkerke R Square cannot be interpreted as easily. A common rule of thumb (<= 0.2: weak relationship, 0.2-0.4: moderate, >= 0.4: strong relationship). It's important to note that the interpretation of Nagelkerke R Square should be taken with caution and should be supplemented by other measures of model fit, such as the Hosmer-Lemeshow test, AIC
-## confusionMatrix
-## vif >= 5-10 is large: model has problems estimating the coefficient (but doesn't degrade the quality of predictions), if vif >/(1-r^2) then that predictor is more related to the other predictors than it is to the response
+### the smallest AIC provides the best model
+### AUC (area under the ROC curve) the closer to 1 the more correct predictions
+### predict: predict the values based on the previous data behaviors and thus by fitting that data to the model
+### plogis: Logistic Cumulative Distribution Function
+### Cox and Snell R square: Analysis_Survival_Cox Regression. The coefficients in a Cox regression relate to hazard; a positive coefficient indicates a worse prognosis and a negative coefficient indicates a protective effect of the variable with which it is associated
+### nagelkerke: a measure of goodness of fit in logistic regression analysis, a modification of the Cox and Snell R Square. Ranges [0,1], a common rule of thumb (<= 0.2: weak relationship, 0.2-0.4: moderate, >= 0.4: strong relationship).
+### confusionMatrix: matrix between actual and predicted values
+### vif >= 5-10 is large: model has problems estimating the coefficient
 
 ```{r model of cancellation}
+
+# convert the non-numeric variables to numeric values (the lower the number, the higher frequency)
+main_processed$Referral.Source_numeric <- mapvalues(main_processed$Referral.Source_recode, from = c("CLINIC","GP","WARD","BREAST CHECK (NBSP)","Elsewhere outside Mater","OTHER CONSULTANT","Elsewhere of Mater","EMERGENCY DEPT"), to = c(1:8))
+main_processed$Clinic.Type_numeric <- mapvalues(main_processed$Clinic.Type, from = c("SBC : SYMPTOMATIC BREAST CLINIC","TRI : TRIPLE ASSESSMENT CLINIC","MED : MEDICAL","FRA : FAMILY RISK ASSESSMENT","GEN : GENERAL"), to = c(1:5))
+main_processed$Consultant_numeric <- mapvalues(main_processed$Consultant, from = c("WALSSI : WALSH MS SIUN","BARRYM : BARRY MR. MITCHELL JOHN","KELLM : KELL PROFESSOR MALCOLM","STOKES : STOKES PROF. MAURICE","HEENEY : HEENEY MS. ANNA"), to = c(1:5))
+main_processed$Insurance.Scheme_numeric <- mapvalues(main_processed$Insurance.Scheme, from = c("U : UNKNOWN","D : MEDICAL CARD HOLDER","V : VHI","B : LAYA HEALTHCARE","I : IRISH LIFE HEALTH","S : SELF","G : GARDA SCHEME","O : OTHER","E : E.S.B. SCHEME","P : PRISON OFFICERS","J : GLOHEALTH","H : HOSPITAL SATURDAY FUND","A : ARMY SCHEME","C : BLUE CROSS","M : MEDISHIELD"), to = c(1:15))
+main_processed$Eligibility_numeric <- mapvalues(main_processed$Eligibility_recode, from = c("CAT 2 (NON MEDICAL CARD)","CAT 1 (MEDICAL CARD)","ELIGIBILITY UNKNOWN","EXEMPT","RESEARCH/NATIONAL PROG.","ACUTE UNCLASSIFIED","NON ACUTE UNCLASSIFIED"), to = c(1:7))
+main_processed$Booking.Type_numeric <- mapvalues(main_processed$Booking.Type_recode, from = c("R : RETURN","N : NEW","W : WARD"), to = c(1:3))
+main_processed$Hospital.Catchment_numeric <- mapvalues(main_processed$Hospital.Catchment, from = c("National Catchment","Mater Catchment","Connolly Catchment","Beaumont Catchment","James Catchment","Vincents Catchment","Tallaght Catchment","International Catchment"), to = c(1:8))
+main_processed$appointmentDay_numeric <- mapvalues(main_processed$appointmentDay, from = c("Tuesday","Friday","Monday","Thursday","Wednesday"), to = c(1:5))
+main_processed$appointmentMonthYear_numeric <- mapvalues(main_processed$appointmentMonthYear, from = c("2021-08","2021-09","2021-11","2022-06","2021-07","2022-11","2022-03","2022-05","2023-08","2023-09","2022-02","2021-10","2022-08","2022-10","2022-09","2022-07","2020-10","2021-06","2023-05","2023-11","2020-11","2021-12","2022-01","2023-07","2020-03","2023-01","2022-04","2023-06","2020-09","2023-03","2021-03","2021-01","2023-10","2021-05","2023-04","2020-12","2023-02","2023-12","2021-04","2021-02","2020-07","2020-08","2022-12","2020-04","2020-06","2020-02","2020-05","2020-01"), to = c(1:48))
+main_processed$bookedDay_numeric <- mapvalues(main_processed$bookedDay, from = c("Tuesday","Monday","Wednesday","Thursday","Friday","Saturday","Sunday"), to = c(1:7))
+main_processed$bookedMonthYear_numeric <- mapvalues(main_processed$bookedMonthYear, from = c("2022-10","2021-09","2020-11","2020-08","2020-07","2021-08","2022-05","2020-09","2021-03","2020-01","2022-06","2020-02","2022-03","2020-10","2021-07","2022-07","2022-09","2021-10","2020-06","2021-04","2021-02","2023-05","2021-06","2023-01","2023-04","2023-03","2022-02","2021-05","2022-11","2021-11","2023-06","2023-07","2021-12","2022-04","2022-01","2023-02","2022-08","2023-08","2020-12","2022-12","2023-09","2023-11","2021-01","2023-10","2020-05","2020-03","2019-12","2020-04","2023-12","2019-11","2019-08","2019-07","2019-10","2019-09","2019-01","2019-02","2019-06","2019-03","2019-05","2019-04","2017-08"), to = c(1:61))
+main_processed$Gender_numeric <- mapvalues(main_processed$Gender, from = c("Male","Female","Unknown"), to = c(1:3))
+main_processed$Area.of.Residence_numeric <- mapvalues(main_processed$Area.of.Residence_recode, from = c("DUBLIN NTH","EASTERN & MIDLAND REGION (excl.Dublin,Meath)","Meath","NORTHERN WESTERN REGION","DUBLIN STH","SOUTHERN REGION","UNKNOWN","OUTSIDE IRELAND"), to = c(1:8))
+
+write.csv(main_processed[,c("Gender_numeric","Age.at.Attendance","Area.of.Residence_numeric","addressDiff","No.Cancels","Referral.Source_numeric","Clinic.Code","Clinic.Type_numeric","Consultant_numeric","Insurance.Scheme_numeric","Eligibility_numeric","Hospital.Catchment_numeric","Booking.Type_numeric","appointmentDay_numeric","appointmentMonthYear_numeric","bookedDay_numeric","bookedMonthYear_numeric")],"breastDetails_cancel.csv")
+
+main_processed_cancel <- read.csv("breastDetails_cancel.csv")
+main_processed_cancel <- subset(main_processed_cancel, is.na(main_processed_cancel$No.Cancels)==F)
+
+# main_processed_cancel[] <- lapply(main_processed_cancel,as.numeric)
+cor(main_processed_cancel, method = "spearman")
+library(corrplot)
+corrplot(cor(main_processed_cancel))
+
+sample <- sample(c(TRUE,FALSE), nrow(main_processed_cancel), replace=TRUE, prob=c(0.7,0.3))
+train <- main_processed_cancel[sample, ]
+test <- main_processed_cancel[!sample, ]
+
+
 ## with Clinic relevance
-logmodel1 <- glm(formula = No.Cancels ~ Clinic.Code + Clinic.Type + Referral.Source_recode + Consultant + Insurance.Scheme + Eligibility_recode + Booking.Type_recode + Hospital.Catchment, family = binomial(link = "logit"), data = main_processed)
+logmodel1 <- glm(formula = No.Cancels ~ Clinic.Code + Clinic.Type_numeric + Referral.Source_numeric + Consultant_numeric + Insurance.Scheme_numeric + Eligibility_numeric + Booking.Type_numeric + Hospital.Catchment_numeric, family = binomial(link = "logit"), data = train)
 summary(logmodel1)
 
 exp(coefficients(logmodel1))
-# predicted1 <- plogis(predict(logmodel1, main_processed)) #library(rbenchmark)
-nagelkerke(logmodel1) #library(rcompanion)
-# confusionMatrix(main_processed$No.Cancels, predicted1, thresholder=0.8) #library(caret)
-# sensitivity(main_processed$No.Cancels, predicted1, thresholder=0.8)
-# specificity(main_processed$No.Cancels, predicted1, thresholder=0.8)
-# vif(logmodel1) #library(regclass)
 
-lroc(logmodel1, graph=TRUE) #library(epiDisplay), give plot plus AUC
+nagelkerke(logmodel1) #library(rcompanion)
+confusion_matrix(logmodel1) #library(regclass)
+confusion_matrix(logmodel1, test) #library(regclass)
+
+predicted1 <- qlogis(predict(logmodel1, test, type=c("terms"))) #library(rbenchmark)
+# names
+# logmodel1 <- factor(logmodel1, levels=c("0","1"))
+# predicted1 <- factor(predicted1, levels=c("0","1"))
+# confusionMatrix(predicted1, logmodel1, threshold=0.8) #library(caret)
+# sensitivity(main_processed$No.Cancels, predicted1, threshold=0.8)
+# specificity(main_processed$No.Cancels, predicted1, threshold=0.8)
+
+vif(logmodel1) #library(regclass)
 
 
 ## with Date relevance
-logmodel2 <- glm(formula = No.Cancels ~ appointmentDay + appointmentMonthYear + bookedDay + bookedMonthYear, family = binomial(link = "logit"), data = main_processed)
+logmodel2 <- glm(formula = No.Cancels ~ appointmentDay_numeric + appointmentMonthYear_numeric + bookedDay_numeric + bookedMonthYear_numeric, family = binomial(link = "logit"), data = train)
 summary(logmodel2)
 
-exp(coefficients(logmodel2))
-# predicted2 <- plogis(predict(logmodel2, main_processed))
+# exp(coefficients(logmodel2))
+
 nagelkerke(logmodel2)
+confusion_matrix(logmodel2) #library(regclass)
+confusion_matrix(logmodel2, test) #library(regclass)
+
+# predicted2 <- plogis(predict(logmodel2, main_processed))
 # confusionMatrix(main_processed$No.Cancels, predicted2, thresholder=0.8)
 # sensitivity(main_processed$No.Cancels, predicted2, thresholder=0.8)
 # specificity(main_processed$No.Cancels, predicted2, thresholder=0.8)
-# vif(logmodel2)
 
-lroc(logmodel2, graph=TRUE)
+vif(logmodel2)
+
 
 ## with Patient relevance
-logmodel3 <- glm(formula = No.Cancels ~ Gender + Age.at.Attendance + Area.of.Residence + addressDiff, family = binomial(link = "logit"), data = main_processed)
+logmodel3 <- glm(formula = No.Cancels ~ Gender_numeric + Age.at.Attendance + Area.of.Residence_numeric + addressDiff, family = binomial(link = "logit"), data = train)
 summary(logmodel3)
 
-exp(coefficients(logmodel3))
-# predicted3 <- plogis(predict(logmodel3, main_processed))
+# exp(coefficients(logmodel3))
+
 nagelkerke(logmodel3)
+confusion_matrix(logmodel3) #library(regclass)
+confusion_matrix(logmodel3, test) #library(regclass)
+
+# predicted3 <- plogis(predict(logmodel3, main_processed))
 # confusionMatrix(main_processed$No.Cancels, predicted3, thresholder=0.8)
 # sensitivity(main_processed$No.Cancels, predicted3, thresholder=0.8)
 # specificity(main_processed$No.Cancels, predicted3, thresholder=0.8)
-# vif(logmodel3)
 
-lroc(logmodel3, graph=TRUE)
+vif(logmodel3)
+
 
 ## with all predictors
-logmodel <- glm(formula = No.Cancels ~ Gender + Age.at.Attendance + Area.of.Residence + addressDiff + Clinic.Code + Clinic.Type + Consultant + Insurance.Scheme + Hospital.Catchment + appointmentDay + appointmentMonthYear + bookedDay + bookedMonthYear, family = binomial(link = "logit"), data = main_processed)
+logmodel <- glm(formula = No.Cancels ~ Gender_numeric + Age.at.Attendance + Area.of.Residence_numeric + addressDiff + Referral.Source_numeric + Clinic.Code + Clinic.Type_numeric + Consultant_numeric + Insurance.Scheme_numeric + Eligibility_numeric + Hospital.Catchment_numeric + Booking.Type_numeric + appointmentDay_numeric + appointmentMonthYear_numeric + bookedDay_numeric + bookedMonthYear_numeric, family = binomial(link = "logit"), data = train)
 summary(logmodel)
 
 exp(coefficients(logmodel))
-# predicted <- plogis(predict(logmodel, main_processed))
+
 nagelkerke(logmodel)
+confusion_matrix(logmodel) #library(regclass)
+# confusion_matrix(logmodel, test) #library(regclass)
+
+# predicted <- plogis(predict(logmodel, main_processed))
 # confusionMatrix(main_processed$No.Cancels, predicted, thresholder=0.8)
 # sensitivity(main_processed$No.Cancels, predicted, thresholder=0.8)
 # specificity(main_processed$No.Cancels, predicted, thresholder=0.8)
-# vif(logmodel)
 
-lroc(logmodel, graph=TRUE)
+vif(logmodel)
+
+#library(epiDisplay), give plot plus AUC
+logistic.display(logmodel)
+lroc <- lroc(logmodel, title=TRUE, cex.main=1, cex.lab=1, col.lab="blue", cex.axis=1, 
+lwd=3)
+lroc1 <- lroc(logmodel1, add=TRUE, line.col="brown", lty=2)
+lroc2 <- lroc(logmodel2, add=TRUE, line.col="darkgreen", lty=2)
+lroc3 <- lroc(logmodel3, add=TRUE, line.col="purple", lty=2)
+legend("bottomright",legend=c("all predictors", "clinic relevance", "date relevance", "patient relevance"),
+        lty=1:2, col=c("red","brown","darkgreen","purple"), bg="white")
+lrtest(logmodel,logmodel1) #library(lmtest)
+lrtest(logmodel,logmodel2)
+lrtest(logmodel,logmodel3)
 
 ```
-# Comparing models
+# Comparing factors in models
 ```{r comparing models}
-anova(logmodel1, logmodel2, logmodel3, logmodel, test="Chisq")
+# anova(logmodel1, logmodel2, logmodel3, logmodel, test="Chisq") #run if there is other ML models
 #library(survey)
+regTermTest(logmodel,"Referral.Source_numeric")
 regTermTest(logmodel,"Clinic.Code")
-regTermTest(logmodel,"Clinic.Type")
-regTermTest(logmodel,"Consultant")
-# regTermTest(logmodel,"Eligibility")
-# regTermTest(logmodel,"Booking.Type")
-#regTermTest(logmodel,"Hospital.Catchment")
-regTermTest(logmodel,"appointmentDay")
-regTermTest(logmodel,"appointmentMonthYear")
-regTermTest(logmodel,"bookedDay")
-regTermTest(logmodel,"bookedMonthYear")
-regTermTest(logmodel,"Gender")
-regTermTest(logmodel,"Age.at.Attendance")
-regTermTest(logmodel,"Area.of.Residence")
+regTermTest(logmodel,"Clinic.Type_numeric")
+regTermTest(logmodel,"Consultant_numeric")
+regTermTest(logmodel,"Insurance.Scheme_numeric")
+regTermTest(logmodel,"Eligibility_numeric")
+regTermTest(logmodel,"Booking.Type_numeric")
+regTermTest(logmodel,"Hospital.Catchment_numeric")
+regTermTest(logmodel,"appointmentDay_numeric")
+regTermTest(logmodel,"appointmentMonthYear_numeric")
+regTermTest(logmodel,"bookedDay_numeric")
+regTermTest(logmodel,"bookedMonthYear_numeric")
+regTermTest(logmodel,"Gender_numeric")
+# regTermTest(logmodel,"Age.at.Attendance")
+regTermTest(logmodel,"Area.of.Residence_numeric")
 regTermTest(logmodel,"addressDiff")
 
 #library(caret)
 varImp(logmodel)
 ```
 
-# Build baseline model of DNA with predictors, the smallest AIC provides the best model
-
-# Build baseline model of new attendances with predictors, the smallest AIC provides the best model
+# Build baseline model of new attendances with predictors
 
 Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
