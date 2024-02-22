@@ -398,41 +398,6 @@ CrossTable(main_processed$Reason.for.Cancellation.Desc, main_processed$Rebooked.
 ```
 
 
-# Do not attend correlation
-```{r correlation, DNA}
-## clinic relevance
-CrossTable(main_processed$Clinic.Type, main_processed$No.DNAs, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
-CrossTable(main_processed$Clinic.Code, main_processed$No.DNAs, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
-CrossTable(main_processed$NurseFlag, main_processed$No.DNAs, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
-CrossTable(main_processed$Referral.Source_recode, main_processed$No.DNAs, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
-#CrossTable(main_processed$Referring.Hospital, main_processed$No.DNAs, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
-CrossTable(main_processed$Consultant, main_processed$No.DNAs, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
-CrossTable(main_processed$Insurance.Scheme, main_processed$No.DNAs, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
-CrossTable(main_processed$Eligibility_recode, main_processed$No.DNAs, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
-CrossTable(main_processed$Booking.Type_recode, main_processed$No.DNAs, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
-CrossTable(main_processed$Hospital.Catchment, main_processed$No.DNAs, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
-CrossTable(main_processed$bookedDay, main_processed$No.DNAs, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
-CrossTable(main_processed$bookedMonthYear, main_processed$No.DNAs, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
-CrossTable(main_processed$appointmentDay, main_processed$No.DNAs, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
-CrossTable(main_processed$appointmentMonthYear, main_processed$No.DNAs, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
-
-## booking relevance
-### days difference between Appointment and Booked date
-leveneTest(daysDiff_AppointBooked ~ as.factor(No.DNAs), data=main_processed) #leveneTest is Ha
-t.test(daysDiff_AppointBooked ~ No.DNAs, var.equal=F, data=main_processed)
-
-## patient characteristics relevance
-CrossTable(main_processed$Gender, main_processed$No.DNAs, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
-
-CrossTable(main_processed$Age.at.Attendance.Cat.HSE, main_processed$No.DNAs, digits=2, fisher=F, chisq=TRUE, expected=TRUE) # age group
-leveneTest(Age.at.Attendance ~ as.factor(No.DNAs), data=main_processed)
-t.test(Age.at.Attendance ~ No.DNAs, var.equal=FALSE, data=main_processed) #leveneTest is Ha
-
-CrossTable(main_processed$Area.of.Residence_recode, main_processed$No.DNAs, digits=2, fisher=F, chisq=TRUE, expected=TRUE) # remove Na or impute where no residence
-CrossTable(main_processed$addressDiff, main_processed$No.DNAs, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
-```
-
-
 # New Attendance correlation
 ```{r correlation, new attendance}
 ## clinic relevance
