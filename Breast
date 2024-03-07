@@ -25,9 +25,11 @@ library(stringr)
 library(readr)
 library(tidyverse) #table (frequency and proportion), install.packages("tidyverse")
 library(tidyr) # CrossTable
-library(dplyr) # CrossTable, install.packages("dplyr")
+library(dplyr) # CrossTable, ggplot
 library(ggplot2)
-library(qcc) #install
+library(ggthemes)
+library(qcc) #control charts
+library(qicharts) #run chart, control charts
 library(sqldf)
 # library(Rcmdr)  #continuous var, numSummary function, install.packages("Rcmdr") ##not running if in hurry
 library(gridExtra)  #graph
@@ -133,15 +135,17 @@ main$Reason.for.Cancellation_recode <- mapvalues(main$Reason.for.Cancellation.De
 
 ### Date calculation from Appointment/ Booking to Attendance
 main$Attendance.Date <- as.Date(main$Attendance.Date, format="%d/%m/%y")
+library(zoo)
+main$attendanceMonthYear <- as.yearmon(paste(year(main$Attendance.Date), month(main$Attendance.Date)), "%Y %m") #change date from char format to numeric by using library(zoo)
 
 main$Appointment.Date <- as.POSIXct(main$Appointment.Date...Time,format="%Y%m%d %H:%M:%S",tz=Sys.timezone())
 main$Appointment.Date <- as.Date(main$Appointment.Date, format="%d/%m/%y")
-main$appointmentMonthYear <- substring(main$Appointment.Date,0,7)
+main$appointmentMonthYear <- as.yearmon(paste(year(main$Appointment.Date), month(main$Appointment.Date)), "%Y %m") #change date from char format to numeric by using library(zoo)
 main$appointmentDay <- weekdays(main$Appointment.Date)
 
 main$Booked.Date <- as.POSIXct(main$Booked.Date,format="%Y/%m/%d",tz=Sys.timezone())
 main$Booked.Date_new <- as.Date(main$Booked.Date, format="%d/%m/%y")
-main$bookedMonthYear <- substring(main$Booked.Date,0,7)
+main$bookedMonthYear <- as.yearmon(paste(year(main$Booked.Date_new), month(main$Booked.Date_new)), "%Y %m") #change date from char format to numeric by using library(zoo)
 main$bookedDay <- weekdays(main$Booked.Date)
 
 main$daysDiff_attendanceAppoint <- difftime(main$Appointment.Date,main$Attendance.Date,units="days")
@@ -348,7 +352,8 @@ kurtosis(main_processed$daysDiff_AppointBooked)
 
 
 ```{r plot, echo=FALSE}
-# Creating graphs
+# One variable description
+## Creating graphs
 hist(main_processed$Age.at.Attendance)
 boxplot(main_processed$Age.at.Attendance,horizontal = T)
 
@@ -408,7 +413,7 @@ gg_insuranceScheme <- ggplot(main_processed,aes(x=Insurance.Scheme_recode)) +
   labs(x = "Insurance Scheme") +
   scale_x_discrete(limits=c("U","D","V","B","I","S","G","O","E","P","J","H","A","C","M"), guide = guide_axis(n.dodge = 2)) +
   geom_bar(colour="blue", fill="lightblue")
-gg_bookingType
+gg_insuranceScheme
 
 gg_eligibility <- ggplot(main_processed,aes(x=Eligibility_recode)) +
   labs(x = "Eligibility") +
@@ -556,6 +561,52 @@ boxplot(main_processed$daysDiff_attendanceAppoint,horizontal = T)
 hist(main_processed$daysDiff_attendanceBooked)
 boxplot(main_processed$daysDiff_attendanceBooked,horizontal = T)
 
+# Two variables
+recordTypeBooked_tb <- data.frame(table(main_processed$Record.Type, main_processed$Booked.Date_new))
+recordTypeBooked_tb$bookedMonthYear <- as.yearmon(paste(year(recordTypeBooked_tb$Var2), month(recordTypeBooked_tb$Var2)), "%Y %m") #change date from char format to numeric by using library(zoo)
+#recordTypeBooked_tb$bookedMonthYear <- year(recordTypeBooked_tb$Var2) * 100 + month(recordTypeBooked_tb$Var2)
+
+## values in x, y axis need to be in numerical format
+recordTypeBooked_tb %>%
+  ggplot(aes(x=bookedMonthYear, y=Freq, color=Var1)) +
+  geom_point(aes(y=Freq)) +
+  geom_line(aes(y=Freq), linewidth=1, alpha=.8) +
+  labs(title = "Number of Record Types over Booked Time",
+       subtitle = "How do Record Types differ by Booked Time?",
+       x = "Month-Year", y = "Number of Record Types", color = "Record Types") +
+  theme_fivethirtyeight() +
+  theme(axis.title = element_text(), axis.text.x = element_text(angle = -90, vjust = .5))
+
+
+recordTypeAppt_tb <- data.frame(table(main_processed$Record.Type, main_processed$Appointment.Date))
+recordTypeAppt_tb$apptMonthYear <- as.yearmon(paste(year(recordTypeAppt_tb$Var2), month(recordTypeAppt_tb$Var2)), "%Y %m") #change date from char format to numeric by using library(zoo)
+
+## values in x, y axis need to be in numerical format
+recordTypeAppt_tb %>%
+  ggplot(aes(x=apptMonthYear, y=Freq, color=Var1)) +
+  geom_point() +
+  geom_line(linewidth=1, alpha=.8) +
+  labs(title = "Number of Record Types over Appointment Time",
+       subtitle = "How do Record Types differ by Appointment Time?",
+       x = "Month-Year", y = "Number of Record Types", color = "Record Types") +
+  theme_fivethirtyeight() +
+  theme(axis.title = element_text(), axis.text.x = element_text(angle = -90, vjust = .5))
+
+
+recordTypeAtd_tb <- data.frame(table(main_processed$Record.Type, main_processed$Attendance.Date))
+recordTypeAtd_tb$atdMonthYear <- as.yearmon(paste(year(recordTypeAtd_tb$Var2), month(recordTypeAtd_tb$Var2)), "%Y %m") #change date from char format to numeric by using library(zoo)
+
+## values in x, y axis need to be in numerical format
+recordTypeAtd_tb %>%
+  ggplot(aes(x=atdMonthYear, y=Freq, color=Var1)) +
+  geom_point() +
+  geom_line(linewidth=1, alpha=.8) +
+ # scale_y_discrete(labels = scales::col_factor) +
+  labs(title = "Number of Record Types over Attendance Time",
+       subtitle = "How do Record Types differ by Attendance Time?",
+       x = "Month-Year", y = "Number of Record Types", color = "Record Types") +
+  theme_fivethirtyeight() +
+  theme(axis.title = element_text(), axis.text.x = element_text(angle = -90, vjust = .5)) 
 
 ```
 
@@ -974,7 +1025,7 @@ cancel_dt <- rpart(y ~ ., data = X, method = "class",cp=0.05) #cp is the complex
 summary(cancel_dt)
 
 # Plot the decision tree
-rpart.plot(cancel_dt)
+rpart.plot(cancel_dt, extra=104)
 cancel_dt$variable.importance
 
 # Predict the model with actual defaults in test data
