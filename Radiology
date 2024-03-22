@@ -1,0 +1,1303 @@
+---
+title: "Radiology_DivePort"
+output: html_document
+date: "2024-03-19"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+## Data Source: Mater Dive Port 7
+# Load library package
+```{r load working space, echo=FALSE}
+## Load working environment
+rm(list = ls())
+print(getwd())
+setwd("C:/Users/User/Documents/RStudio/RadiologyDivePort")
+print(getwd())
+
+#library(dataQualityR) #package is not available for this version of R
+library(stringr)
+library(readr)
+library(readxl)
+library(tidyverse) #table (frequency and proportion), install.packages("tidyverse")
+library(tidyr) # CrossTable
+library(dplyr) # CrossTable, ggplot
+library(ggplot2)
+library(ggthemes)
+library(qcc) #control charts
+library(qicharts) #run chart, control charts
+library(sqldf)
+# library(Rcmdr)  #continuous var, numSummary function, install.packages("Rcmdr") ##not running if in hurry
+library(gridExtra)  #graph
+
+library(Hmisc)  #Imputate missing values
+#library(DMwR) #Compute the accuracy of imputation, but need to install the other packages
+
+library(psych) #install, describeBy
+library(moments)  #skewness,kurtosis
+library(plyr)   #categorical var, install.packages("plyr")
+library(pastecs) #stat.desc
+library(semTools)
+library(car)  #leveneTest, Scatterplot matrix
+
+library(dunn.test) #install, non-parametric post-hoc test after Kruskal-Wallis
+library(stats)  #multiple regression lm() function, lapply function
+library(PerformanceAnalytics) #chart.Correlation (Scatterplot)
+
+library(caret) #classification & regression training, confusionMatrix, varImp
+library(rbenchmark) #plogis
+library(rcompanion) #nagelkerke
+library(regclass) #vif
+# library(C50)
+library(AppliedPredictiveModeling) #Scatterplot, install.packages('AppliedPredictiveModeling')
+library(rpart)
+library(rpart.plot)
+library(pROC)  #cross validation
+library(gmodels)  #Evaluate the model, CrossTable correlation, install.packages("gmodels")
+library(epiDisplay) #plot with AUC for model prediction
+library(survey) #comparing models, regTermTest
+library(rattle)
+library(RColorBrewer)
+```
+
+# Load file & view
+
+```{r load file, echo=TRUE}
+# Scheduled data
+file_path1_schd <- "Radiology scheduled details 2020-2021.xlsx"
+sheet_name1_schd <- "Sheet1"
+df1_schd <- read_excel(file_path1_schd, sheet = sheet_name1_schd)
+
+file_path2_schd <- "Radiology scheduled details 2022-2024.xlsx"
+sheet_name2_schd <- "Sheet1"
+df2_schd <- read_excel(file_path2_schd, sheet = sheet_name2_schd)
+
+main_schd <- merge(df1_schd, df2_schd, all=TRUE)
+
+
+# All orders
+file_path1_all <- "Orders Patient Details 2020.xlsx"
+sheet_name1_all <- "Data"
+df1_all <- read_excel(file_path1_all, sheet = sheet_name1_all)
+# df1_all <- df1_all[-c(2),] #remove title rows
+# names(df1_all) <- df1_all[c(1),]
+#("subDept","orderStatus","orderDes","MRN","patientName","orderDate","schdDate","DOD","orderingConsultant","orderedBy","insuranceScheme","episodeType","mobileNo","medicalCardHolder","itemPriority","orderingSpecialtyDes","privateIndicator","schdMonthYear","orderMonthYear","schdTime","DOB","currentAgeDes","gender","presentPhoneNo","No.OrderItems","No.Pts","No.Episodes","orderToNow_daysAvg","No.OrderDes","orderToNow_daysMax","orderToNow_daysMin","futureBreach","orderingLocation","orderLocationGrp") #renaming variables
+
+file_path2_all <- "Orders Patient Details 2021.xlsx"
+sheet_name2_all <- "Data"
+df2_all <- read_excel(file_path2_all, sheet = sheet_name2_all)
+
+file_path3_all <- "Orders Patient Details 2022.xlsx"
+sheet_name3_all <- "Data"
+df3_all <- read_excel(file_path3_all, sheet = sheet_name3_all)
+
+file_path4_all <- "Orders Patient Details 2023.xlsx"
+sheet_name4_all <- "Data"
+df4_all <- read_excel(file_path4_all, sheet = sheet_name4_all)
+
+#merge multiple data frames, package library(tidyverse) is quicker for big data
+df_list_all <- list(df1_all, df2_all, df3_all, df4_all)
+main_all <- df_list_all %>% reduce(full_join)
+
+
+# Completed orders
+file_path1_cpt <- "patient details 2020.xlsx"
+sheet_name1_cpt <- "Data"
+df1_cpt <- read_excel(file_path1_cpt, sheet = sheet_name1_cpt)
+
+file_path2_cpt <- "patient details 2021.xlsx"
+sheet_name2_cpt <- "Data"
+df2_cpt <- read_excel(file_path2_cpt, sheet = sheet_name2_cpt)
+
+file_path3_cpt <- "patient details 2022.xlsx"
+sheet_name3_cpt <- "Data"
+df3_cpt <- read_excel(file_path3_cpt, sheet = sheet_name3_cpt)
+
+file_path4_cpt <- "patient details 2023.xlsx"
+sheet_name4_cpt <- "Data"
+df4_cpt <- read_excel(file_path4_cpt, sheet = sheet_name4_cpt)
+
+file_path5_cpt <- "patient details 2024.xlsx"
+sheet_name5_cpt <- "Data"
+df5_cpt <- read_excel(file_path5_cpt, sheet = sheet_name5_cpt)
+
+#merge multiple data frames, package library(tidyverse) is quicker for big data
+df_list_cpt <- list(df1_cpt, df2_cpt, df3_cpt, df4_cpt, df5_cpt)
+main_cpt <- df_list_cpt %>% reduce(full_join)
+
+
+# main <- subset(main, year(main$`Order Date`) < 2024)
+
+
+## View variable types
+main_schd %>% glimpse() #glimpse from library(dplyr)
+
+main_cpt %>% glimpse() #glimpse from library(dplyr)
+
+main_all %>% glimpse() #glimpse from library(dplyr)
+head(main_all,10)
+
+#sample <- main %>% group_by(main$Record.Type)
+#samplePatients <- sample_frac(main,0.1,replace = F)
+
+## Remove NAs or impute NAs if necessary
+allMissing = is.na(main_all)
+counts = colSums(allMissing)
+counts [counts>0]
+# main <- na.omit(main)
+
+print(is.data.frame(main_all))
+
+```
+
+# Transform some variables values
+* Re-code values
+* Calculate difference between variables
+
+```{r transform values, echo=TRUE}
+# All orders
+## Variables description
+### Category variables
+count_MRN <- count(main_all$`Medical Record Number`)
+summary(count_MRN)
+sort(unique(main_all$`Sub Department`)) #3/15 values
+sort(unique(main_all$`Ordering Specialty Description`)) #48 values
+sort(unique(main_all$`Order Description`)) #recode values, 1000 values
+sort(unique(main_all$`Order Status`)) #recode values #114 values
+sort(unique(main_all$`Ordering Consultant`)) #505 values
+# sort(unique(main_all$`Ordered by`)) #3173 values with no indication
+sort(unique(main_all$`Insurance Scheme`)) #15 values
+sort(unique(main_all$`Episode Type`)) #4 values
+sort(unique(main_all$`Medical Card Holder`)) #2 values
+sort(unique(main_all$`Item Priority`)) #6 values
+sort(unique(main_all$`Private Indicator`)) #2 values
+sort(unique(main_all$`Current Age Description`)) #1000 values with age calculation to years & months
+sort(unique(main_all$Gender)) #3 values
+sort(unique(main_all$`Ordering Location`)) #recode values, 1000 values
+sort(unique(main_all$`Order Location Group`)) #10 values
+sort(unique(main_all$`No Order Desc`)) #just one value (1)
+sort(unique(main_all$`Future Breach`)) #4 values
+
+### Numeric variables
+summary(main_all$`Order Date`)
+summary(main_all$`Schedule Date`)
+summary(main_all$`No Order Items`)
+summary(main_all$`No Patients`)
+summary(main_all$`No Episodes`)
+summary(main_all$`Order to now (days) Average`)
+summary(main_all$`Order to now (days) Max`)
+summary(main_all$`Order to now (days) Min`)
+
+#### Ordering Location with 1000 values to 5 values -> identify by Order Location Group or if need in-depth analysis for Order Location Group
+# main_all <- main_all %>%     #library(plyr)
+#  mutate(orderLocation = case_when(
+#   substring(main_all$`Ordering Location`,nchar(main_all$`Ordering Location`)-4 + 1,nchar(main_all$`Ordering Location`)) %in% "Ward" ~ "Ward",
+#   substring(main_all$`Ordering Location`,nchar(main_all$`Ordering Location`)-10 + 1,nchar(main_all$`Ordering Location`)) %in% "OPD Clinic" ~ "OPD Clinic",
+#   substring(main_all$`Ordering Location`,nchar(main_all$`Ordering Location`)-4 + 1,nchar(main_all$`Ordering Location`)) %in% "Dept" ~ "Emergency Dept",
+#   substring(main_all$`Ordering Location`,nchar(main_all$`Ordering Location`)-14 + 1,nchar(main_all$`Ordering Location`)) %in% "ROOMS Referral" ~ "Rooms Referral",
+#   substring(main_all$`Ordering Location`,nchar(main_all$`Ordering Location`)-4 + 1,nchar(main_all$`Ordering Location`)) %in% "Referral" ~ "Referral",
+#   substring(main_all$`Ordering Location`,0,1) %in% c("G0","G1") ~ "Consultant Referral",
+#   substring(main_all$`Ordering Location`,0,1) %in% c("H0") ~ "Public Hospital",
+#   substring(main_all$`Ordering Location`,0,1) %in% c("H1") ~ "Private Hospital in Dublin",
+#   substring(main_all$`Ordering Location`,0,1) %in% c("H9") ~ "Private Hospital outside Dublin",
+#   TRUE ~ "Other"
+# ))
+
+### Date description
+main_all$orderDate <- as.Date(main_all$`Order Date`, format="%d/%m/%y")
+main_all$orderDay <- weekdays(main_all$orderDate)
+main_all$orderMonth <- format(as.Date(main_all$orderDate, format="%Y/%m/%d"),"%m")
+main_all$orderYear <- format(as.Date(main_all$orderDate, format="%Y/%m/%d"),"%Y")
+library(zoo)
+main_all$orderMonthYear <- as.yearmon(paste(year(main_all$orderDate), month(main_all$orderDate)), "%Y %m") #change date from char format to numeric by using library(zoo)
+
+main_all$schdDate <- as.Date(main_all$`Schedule Date`, format="%d/%m/%y")
+main_all$schdDay <- weekdays(main_all$schdDate)
+main_all$schdMonth <- format(as.Date(main_all$schdDate, format="%d/%m/%Y"),"%m")
+main_all$schdYear <- format(as.Date(main_all$schdDate, format="%d/%m/%Y"),"%Y")
+main_all$schdMonthYear <- as.yearmon(paste(year(main_all$schdDate), month(main_all$schdDate)), "%Y %m") #change date from char format to numeric by using library(zoo)
+
+main_all$daysDiff_orderSchd <- difftime(main_all$orderDate,main_all$schdDate,units="days")
+
+# Scheduled orders
+## Variables description
+### Category variables
+count_MRN_schd <- count(main_schd$`Medical Record Number`)
+summary(count_MRN_schd)
+sort(unique(main_schd$`Ordering Consultant`))
+sort(unique(main_schd$`Order Description`),decreasing = T) #recode values
+sort(unique(main_schd$`Episode Type`))
+sort(unique(main_schd$`Order Status`)) #recode values
+sort(unique(main_schd$`Order to now (months) group`))
+
+### Numeric variables
+summary(main_schd$`Order Date`)
+summary(main_schd$`Schedule Date`)
+summary(main_schd$`No Order Items`)
+summary(main_schd$`No Patients`)
+summary(main_schd$`No Episodes`)
+summary(main_schd$`Order to now (days) Average`)
+summary(main_schd$`Order to now (days) Max`)
+summary(main_schd$`Order to now (days) Min`)
+
+
+### Transforming data
+#### Order Description with 1000 values
+# c("XR ZYGOMA BOTH","XR WRIST RT","XR WRIST LT","XR WRIST BOTH","XR TOE RT","XR TOE LT","XR TOE GREAT RT","XR TOE GREAT LT","XR TMJ BOTH","XR TIBIA AND FIBULA RT","XR TIBIA AND FIBULA LT","XR TIBIA AND FIBULA BOTH","XR THUMB RT","XR THUMB LT","XR THUMB BOTH","XR THREE FOOT SPINE","XR THORACOLUMBAR SPINE","XR THORACIC SPINE","XR THORACIC INLET","XR STERNUM","XR STERNOCLAVICULAR JOINT BOTH","XR SKULL PORTABLE","XR SKULL","XR SKELETAL SURVEY","XR SHOULDER RT","XR SHOULDER LT","XR SHOULDER BOTH","XR SCAPULA RT","XR SCAPULA LT","XR SCAPULA BOTH","XR SCAPHOID RT","XR SCAPHOID LT","XR SCAPHOID BOTH","XR SACRUM","XR SACROILIAC JOINT BOTH","XR RIBS RT","XR RIBS LT","XR RADIUS AND ULNA RT","XR RADIUS AND ULNA LT","XR RADIUS AND ULNA BOTH","XR PENIS","XR PELVIS PORTABLE","XR PELVIS JUDET RT","XR PELVIS JUDET LT","XR PELVIS JUDET BOTH","XR PELVIS","XR PATELLA RT","XR PATELLA LT","XR PATELLA BOTH","XR PARANASAL SINUSES","XR ORTHOPANTOMOGRAM FULL","XR ORBIT FOREIGN BODY DEMONSTRATION BOTH","XR ORBIT BOTH","XR NECK SOFT TISSUE","XR NASAL BONES","XR MANDIBLE","XR LUMBAR SPINE","XR LEG MEASUREMENT BOTH","XR KNEE WEIGHTBEARING RT","XR KNEE WEIGHTBEARING LT","XR KNEE WEIGHTBEARING BOTH","XR KNEE RT","XR KNEE LT","XR KNEE INTERCONDYLAR BOTH","XR KNEE BOTH","XR HUMERUS RT","XR HUMERUS LT","XR HUMERUS BOTH","XR HIP RT","XR HIP PORTABLE RT","XR HIP PORTABLE LT","XR HIP LT","XR HIP BOTH","XR HAND RT","XR HAND LT","XR HAND BOTH","XR HAND AND WRIST FOR BONE AGE","XR FOREIGN BODY DEMONSTRATION","XR FOOT WEIGHTBEARING RIGHT","XR FOOT WEIGHTBEARING LEFT","XR FOOT WEIGHTBEARING BOTH","XR FOOT RT","XR FOOT LT","XR FOOT BOTH","XR FINGERS RT","XR FINGERS LT","XR FINGER RING RT","XR FINGER RING LT","XR FINGER MIDDLE RT","XR FINGER MIDDLE LT","XR FINGER LITTLE RT","XR FINGER LITTLE LT","XR FINGER INDEX RT","XR FINGER INDEX LT","XR FEMUR RT","XR FEMUR LT","XR FEMUR BOTH","XR FACIAL BONES","XR EXTREMITY PORTABLE","XR EXTERNAL UPPER EXTREMITY","XR EXTERNAL SPINE","XR EXTERNAL LOWER EXTREMITY","XR EXTERNAL HEAD","XR EXTERNAL CHEST","XR EXTERNAL ABDO/PELVIS","XR ELBOW RT","XR ELBOW LT","XR ELBOW BOTH","XR COLONIC TRANSIT STUDY","XR COCCYX","XR CLAVICLE RT","XR CLAVICLE LT","XR CLAVICLE BOTH","XR CHEST PORTABLE","XR CHEST","XR CERVICOTHORACIC JUNCTION","XR CERVICAL SPINE WITH OBLIQUES","XR CERVICAL SPINE WITH FLEX AND EXT","XR CERVICAL SPINE PORTABLE","XR CERVICAL SPINE","XR CEPHALOGRAM","XR CARPAL TUNNEL RT","XR CARPAL TUNNEL LT","XR CARPAL TUNNEL BOTH","XR CALCANEUS RT","XR CALCANEUS LT","XR CALCANEUS BOTH","XR BLADDER","XR ANKLE WEIGHTBEARING RT","XR ANKLE WEIGHTBEARING LT","XR ANKLE RT","XR ANKLE LT","XR ANKLE JOINT STRESS BOTH","XR ANKLE BOTH","XR ACROMIOCLAVICULAR JOINT RT","XR ACROMIOCLAVICULAR JOINT LT","XR ACROMIOCLAVICULAR JOINT BOTH","XR ACETABULUM RT","XR ACETABULUM LT","XR ACETABULUM BOTH","XR ABDOMEN PORTABLE","XR ABDOMEN")
+rad_0_gen <- c("XR")
+rad_1_gi <- c("ES","FL")
+rad_3_mammo <- c("MG")
+rad_3_mammo_us <- c("US AXILLA RT","US AXILLA LT","US AXILLA BOTH","US BREAST RT","US BREAST LT","US BREAST BOTH","US BREAST AND AXILLA RT","US BREAST AND AXILLA LT","US BREAST AND AXILLA BOTH","US EXTERNAL BREAST RT","US EXTERNAL BREAST LT","US EXTERNAL BREAST BOTH","US GUIDED ASPIRATION BREAST RT","US GUIDED ASPIRATION BREAST LT","US GUIDED ASPIRATION OF BREAST BOTH","US GUIDED CORE NEEDLE BIOPSY","US GUIDED CORE BIOPSY BREAST RT","US GUIDED CORE BIOPSY BREAST LT","US GUIDED CORE BIOPSY BREAST BOTH","US GUIDED CORE BIOPSY AXILLA RT","US GUIDED CORE BIOPSY AXILLA LT","US GUIDED CORE BIOPSY AXILLA BOTH","US GUIDED GUIDEWIRE LOC BREAST RT","US GUIDED GUIDEWIRE LOC BREAST LT","US GUIDED GUIDEWIRE LOC BREAST BOTH","US GUIDED FNA BIOPSY BREAST RT","US GUIDED FNA BIOPSY BREAST LT","US GUIDED FNA AXILLA RT","US GUIDED FNA AXILLA LT","US GUIDED FNA AXILLA BOTH","US GUIDED FNA AND CORE BIOPSY AXILLA RT","US GUIDED FNA AND CORE BIOPSY AXILLA LT","US GUIDED MARKER INSERTION BREAST RT","US GUIDED MARKER INSERTION BREAST LT","US GUIDED MARKER INSERTION BREAST BOTH","US GUIDED MAG SEED LOC BREAST RT","US GUIDED MAG SEED LOC BREAST LT","US GUIDED MAG SEED LOC BREAST BOTH")
+rad_5_ct <- c("CT")
+rad_6_nucd <- c("NM")
+rad_7_cardio <- c("CV","IC")
+rad_7_cardio_other <- c("SVC STENTING","CARDIAC OUTPUTS","CARDIOVERSION","CORONARY ANGIOGRAM")
+rad_9_ir <- c("IR")
+rad_9_ir_other <- c("FL HYSTEROSALPINOGRAM","FL URETHROGRAM","US ABDOMEN PORTABLE","US ENDOANAL SPHINCTER SCAN","US GUIDED ASPIRATION ABDOMEN","US GUIDED ABLATION","US GUIDED ASPIRATION WRIST RT","US GUIDED ASPIRATION WRIST LT","US GUIDED ASPIRATION THYROID","US GUIDED ASPIRATION THORAX","US GUIDED ASPIRATION SHOULDER RT","US GUIDED ASPIRATION SHOULDER LT","US GUIDED ASPIRATION PELVIS","US GUIDED ASPIRATION NECK","US GUIDED ASPIRATION KNEE RT","US GUIDED ASPIRATION KNEE LT","US GUIDED ASPIRATION KIDNEY","US GUIDED ASPIRATION HIP RT","US GUIDED ASPIRATION HIP LT","US GUIDED ASPIRATION HAND RT","US GUIDED ASPIRATION HAND BOTH","US GUIDED ASPIRATION GANGLION CYST","US GUIDED ASPIRATION FOOT RT","US GUIDED ASPIRATION FOOT LT","US GUIDED ASPIRATION ELBOW RT","US GUIDED ASPIRATION ELBOW LT","US GUIDED BIOPSY TRANSPLANTED KIDNEY","US GUIDED BIOPSY THYROID","US GUIDED BIOPSY SOFT TISSUE","US GUIDED BIOPSY SALIVARY GLAND","US GUIDED BIOPSY PROSTATE TRANSRECTAL","US GUIDED BIOPSY PROSTATE TRANSPERINEAL","US GUIDED BIOPSY PELVIS","US GUIDED BIOPSY NECK","US GUIDED BIOPSY LUNG","US GUIDED BIOPSY LIVER","US GUIDED BIOPSY KIDNEY RT","US GUIDED BIOPSY KIDNEY LT","US GUIDED BIOPSY KIDNEY BOTH","US GUIDED BIOPSY HAND LT","US GUIDED BIOPSY FOOT LT","US GUIDED BIOPSY ELBOW RT","US GUIDED BIOPSY ELBOW LT","US GUIDED BIOPSY CHEST","US GUIDED BIOPSY BUTTOCK LT","US GUIDED BIOPSY BONE","US GUIDED BIOPSY ABDOMEN","US GUIDED FINE NEEDLE ASPIRATION","US GUIDED DRAINAGE THORAX","US GUIDED DRAINAGE PELVIS TV","US GUIDED DRAINAGE PELVIS","US GUIDED DRAINAGE OVARIAN CYST","US GUIDED DRAINAGE NECK","US GUIDED DRAINAGE ABDOMEN","US GUIDED DRAINAGE","US GUIDED INJECTION WRIST RT","US GUIDED INJECTION WRIST LT","US GUIDED INJECTION WRIST BOTH","US GUIDED INJECTION TENDON SHEATH","US GUIDED INJECTION TENDON","US GUIDED INJECTION SUBDELTOID BURSA RT","US GUIDED INJECTION SUBDELTOID BURSA LT","US GUIDED INJECTION SUBACROMIAL BURSA RT","US GUIDED INJECTION SUBACROMIAL BURSA LT","US GUIDED INJECTION SUBACROMIAL BURSA B","US GUIDED INJECTION SHOULDER RT","US GUIDED INJECTION SHOULDER LT","US GUIDED INJECTION SHOULDER BOTH","US GUIDED INJECTION KNEE RT","US GUIDED INJECTION KNEE LT","US GUIDED INJECTION KNEE BOTH","US GUIDED INJECTION INTRAARTICULAR","US GUIDED INJECTION HIP RT","US GUIDED INJECTION HIP LT","US GUIDED INJECTION HIP BOTH","US GUIDED INJECTION HAND RT","US GUIDED INJECTION HAND LT","US GUIDED INJECTION HAND BOTH","US GUIDED INJECTION FOOT RT","US GUIDED INJECTION FOOT LT","US GUIDED INJECTION FOOT BOTH","US GUIDED INJECTION ELBOW RT","US GUIDED INJECTION ELBOW LT","US GUIDED INJECTION ELBOW BOTH","US GUIDED INJECTION BURSA","US GUIDED INJECTION ANKLE RT","US GUIDED INJECTION ANKLE LT","US GUIDED INJECTION ANKLE BOTH","US GUIDED INJECTION","US GUIDED INJ TROCHANTERIC BURSA RT","US GUIDED INJ TROCHANTERIC BURSA LT","US GUIDED INJ TROCHANTERIC BURSA B","US GUIDED INJ INTERMETATARSAL BURSA RT","US GUIDED THROMBIN INJECTION","US GUIDED SUPRAPUBIC CATHETER INSERTION","US GUIDED RENAL CYST DRAINAGE RT","US GUIDED RENAL CYST DRAINAGE LT","US GUIDED PUNCTURE PERIPHERAL VEIN","US GUIDED NEPHROSTOMY RT","US GUIDED NEPHROSTOMY LT","US GUIDED NEPHROSTOMY BOTH","US GUIDED MIDLINE CATHETER INSERTION","US OTHER PORTABLE","US SCAN CHEST WALL","US TRANSRECTAL PROSTATE","US WITH CONTRAST")
+rad_4_us <- c("US")
+rad_4_us_excl <- c(rad_9_ir_other,rad_3_mammo_us)
+# rad_ctc <- c("CT CONE BEAM")
+rad_d_scan <- c("DXA")
+rad_img <- c("IM")
+rad_m_mri <- c("MRI")
+rad_mdm <- c("MDM")
+rad_p_pet <- c("PET")
+rad_t_th <- c("TH")
+main_schd <- main_schd %>%     #library(plyr)
+ mutate(orderDes = case_when(
+  substring(main_schd$`Order Description`,0,2) %in% rad_0_gen ~ "Radiology General",
+  substring(main_schd$`Order Description`,0,2) %in% rad_1_gi ~ "G.I. Investigation",
+  substring(main_schd$`Order Description`,0,2) %in% rad_3_mammo ~ "Mammograms", 
+  substring(main_schd$`Order Description`,0) %in% rad_3_mammo_us ~ "Mammograms", #substring has a default value for the last option: last = 1000000L. If we don’t specify last, this value is used
+  substring(main_schd$`Order Description`,0,2) %in% rad_4_us & !substring(main$`Order Description`,0) %in% rad_4_us_excl ~ "Ultrasound",
+  substring(main_schd$`Order Description`,0,2) %in% rad_5_ct ~ "CT",
+  substring(main_schd$`Order Description`,0,2) %in% rad_6_nucd ~ "Radionuclide",
+  substring(main_schd$`Order Description`,0,2) %in% rad_7_cardio ~ "Cadiovascular",
+  substring(main_schd$`Order Description`,0) %in% rad_7_cardio_other ~ "Cadiovascular",
+  substring(main_schd$`Order Description`,0,2) %in% rad_9_ir ~ "Interventional Rad",
+  substring(main_schd$`Order Description`,0) %in% rad_9_ir_other ~ "Interventional Rad",
+  substring(main_schd$`Order Description`,0,3) %in% rad_d_scan ~ "Dexa Scanning",
+  substring(main_schd$`Order Description`,0,2) %in% rad_img ~ "Image Mgmt",
+  substring(main_schd$`Order Description`,0,3) %in% rad_m_mri ~ "M.R.I.",
+  substring(main_schd$`Order Description`,0,3) %in% rad_mdm ~ "MDM",
+  substring(main_schd$`Order Description`,0,3) %in% rad_p_pet ~ "PET-CT",
+  substring(main_schd$`Order Description`,0,2) %in% rad_t_th ~ "Theatre Rad",
+  TRUE ~ "CTC" #rad_ctc substring doesnt work for spaces btw letters
+))
+
+#### Order Status with 112 values
+sort(table(main_schd$`Order Status`),decreasing = T)
+
+
+
+### Date description
+main_schd$orderDate <- as.Date(main_schd$`Order Date`, format="%d/%m/%y")
+main_schd$orderDay <- weekdays(main_schd$orderDate)
+main_schd$orderMonth <- format(as.Date(main_schd$orderDate, format="%d/%m/%Y"),"%m")
+main_schd$orderYear <- format(as.Date(main_schd$orderDate, format="%d/%m/%Y"),"%y")
+library(zoo)
+main_schd$orderMonthYear <- as.yearmon(paste(year(main_schd$orderDate), month(main_schd$orderDate)), "%Y %m") #change date from char format to numeric by using library(zoo)
+
+main_schd$schdDate <- as.Date(main_schd$`Schedule Date`, format="%d/%m/%y")
+main_schd$schdDay <- weekdays(main_schd$schdDate)
+main_schd$schdMonth <- format(as.Date(main_schd$schdDate, format="%d/%m/%Y"),"%m")
+main_schd$schdYear <- format(as.Date(main_schd$schdDate, format="%d/%m/%Y"),"%y")
+library(zoo)
+main_schd$schdMonthYear <- as.yearmon(paste(year(main_schd$schdDate), month(main_schd$schdDate)), "%Y %m") #change date from char format to numeric by using library(zoo)
+
+main_schd$daysDiff_orderSchd <- difftime(main_schd$orderDate,main_schd$schdDate,units="days")
+
+
+### Order description
+cbind(sort(table(main_schd$`Ordering Consultant`),decreasing=TRUE),sort(100*round(prop.table(table(main_schd$`Ordering Consultant`)),5),deparse.level=2,decreasing=TRUE))
+cbind(sort(table(main_schd$`Order Description`),decreasing=TRUE),sort(100*round(prop.table(table(main_schd$`Order Description`)),5),deparse.level=2,decreasing=TRUE))
+cbind(sort(table(main_schd$`Order Status`),decreasing=TRUE),sort(100*round(prop.table(table(main_schd$`Order Status`)),5),deparse.level=2,decreasing=TRUE))
+cbind(sort(table(main_schd$`Order to now (months) group`),decreasing=TRUE),sort(100*round(prop.table(table(main_schd$`Order to now (months) group`)),5),deparse.level=2,decreasing=TRUE))
+cbind(sort(table(main_schd$`No Order Items`),decreasing=TRUE),sort(100*round(prop.table(table(main_schd$`No Order Items`)),5),deparse.level=2,decreasing=TRUE))
+
+### Specialty description
+cbind(sort(table(main_schd$`Episode Type`),decreasing=TRUE),sort(100*round(prop.table(table(main_schd$`Episode Type`)),5),deparse.level=2,decreasing=TRUE))
+cbind(sort(table(as.factor(main_schd$`No Episodes`)),decreasing=TRUE),sort(100*round(prop.table(table(as.factor(main_schd$`No Episodes`))),5),deparse.level=2,decreasing=TRUE))
+
+
+
+
+## Transforming data
+# main_group <- main_processed %>% group_by(main_processed$Medical.Record.Number) #library(moments)
+# main_group$freq_MRN_recode <- ifelse(count(main_group$Medical.Record.Number >= 34)==1,1,0)
+
+#library(plyr)
+# main %>%
+#   mutate(MRN.Pathway = cbind(main$Medical.Record.Number,main$Pathway.Number)) #library(tidyverse)
+
+# main$ <- mapvalues(main$Consultant, from = c(""), 
+#                                     to = c(""))
+# 
+# main$Booking.Type_recode <- ifelse(main$Booking.Type == ":", ifelse(!duplicated(main$Medical.Record.Number), "N : NEW", "R : RETURN"), main$Booking.Type)
+# main$Booking.Type_recode <- mapvalues(main$Booking.Type_recode, from = c("N : NEW","R : RETURN","W : WARD","C : New  Virtual Phone","B : New  Virtual Video","E : Return  Virtual Phone","D : Return  Virtual Video","V : REVIEW"), to =c("NEW","RETURN","WARD","NEW VIRTUAL","NEW VIRTUAL","RETURN VIRTUAL","RETURN VIRTUAL","RETURN"))
+# 
+# main$New.Attendances <- ifelse(is.na(main$No.New.Attendances)==F, ifelse(main$No.New.Attendances>0,1,0), main$No.New.Attendances)
+
+
+# main$addressDiff <- ifelse(main$Present.Address == main$Home.Address, 0, 1)
+
+
+## Create dataset for modelling
+# main.df <- main %>% select(-rownames,-) #when there are multiple files to combine with same variables
+
+write.csv(main[,c("")],".csv")
+
+main_processed <- read.csv(".csv")
+
+## Convert all character variables to factor
+# main_processed <- main_processed %>% mutate_if(is.character,as.factor)
+
+# main_processed_tibble <- as_tibble(main_processed) #library(tidyverse), tibble never changes [the type of the inputs, the names of variables], it only recycles inputs of length 1, and never creates row.names()
+
+```
+
+
+# Inspecting data
+Inspecting new and re-coded variables
+```{r inspection}
+
+str(main_processed)
+summary(main_processed)
+
+any(is.na(main_processed))
+colSums(is.na(main_processed))
+```
+
+
+# Creating descriptive statistics (2020-2023)
+
+## Outcome (response variable): Record.Type (including Attendance, Cancellation, DNA)
+1. Total No. of observations: 82,543
+2. No. of Attendance: 56,656; New Attendance: 21,995; Return Attendance: 34,661
+3. No. of Cancellation: 17,099
+4. No. of DNA: 8,797
+
+<!-- ## Dependable variables (with highest frequency of value): -->
+<!-- 1. Clinic relevance -->
+<!-- * Clinic code :757 (12.79%), 1134 (12.72%) -->
+<!-- * Clinic type: Symptomatic spine clinic (48.66%) -->
+<!-- * M.R.N: 51 times is the highest visit -->
+<!-- * Referral source: Clinic (52.71%) -->
+<!-- * Consultant: WAL (27%), BAR (26%) -->
+<!-- * Insurance scheme: Unknown (36.57%) -->
+<!-- * Eligibility: Non medical card (53.08%) -->
+<!-- * Booking Type: Return (57.4%) -->
+<!-- * Hospital catchment: National catchment (57.91%) -->
+
+<!-- 2. Date relevance -->
+<!-- * Attendance Day: Tuesday (26.6%) -->
+<!-- * Attendance Month-Year: 2021-09 (2.96%) -->
+<!-- * Attendance Month: September (10.2%) -->
+<!-- * Attendance Year: 2021 (27%) -->
+<!-- * Attendance Type: Return (49.64%) -->
+
+<!-- * Appointment Day: Tuesday (27.8%) -->
+<!-- * Appointment Month-Year: 2021-08 (3.42%) -->
+
+<!-- * Booked Day: Tuesday (22.57%) -->
+<!-- * Booked Month-Year: 2022-10 (2.78%) -->
+
+<!-- * Days difference between Attendance and Appointment: Mean 580, Median 730 [0-1096] -->
+<!-- * Days difference between Attendance and Booked day: Mean 506, Median 366 [<0,1112] -->
+<!-- * Days difference between Booked day and Appointment: Mean 91, Median 25 [0-672] -->
+
+<!-- 3. Patient relevance -->
+<!-- * Gender: Female (98%) -->
+<!-- * Age at attendance cat.HSE: 45-54 (23.7%), Average 51 [0-105] -->
+<!-- * Area of residence: Dublin north (45.3%) -->
+<!-- * Difference of Home and Present address: No (82%) -->
+
+<!-- ## Cancellation (N=27610) -->
+<!-- * Cancellation Group: Hospital (57.53%) -->
+<!-- * Reason for cancellation: by hospital (38.62%) -->
+<!-- * Rebooked indicator: Yes (74.5%) -->
+
+```{r descriptive statistics}
+# All orders
+cbind(sort(table(main_all$`Sub Department`),decreasing=TRUE),sort(100*round(prop.table(table(main_all$`Sub Department`)),5),deparse.level=2,decreasing=TRUE))
+cbind(sort(table(main_all$`Episode Type`),decreasing=TRUE),sort(100*round(prop.table(table(main_all$`Episode Type`)),5),deparse.level=2,decreasing=TRUE))
+cbind(sort(table(main_all$`Item Priority`),decreasing=TRUE),sort(100*round(prop.table(table(main_all$`Item Priority`)),5),deparse.level=2,decreasing=TRUE))
+cbind(sort(table(main_all$`Ordering Specialty Description`),decreasing=TRUE),sort(100*round(prop.table(table(main_all$`Ordering Specialty Description`)),5),deparse.level=2,decreasing=TRUE))
+cbind(sort(table(main_all$`Order Location Group`),decreasing=TRUE),sort(100*round(prop.table(table(main_all$`Order Location Group`)),5),deparse.level=2,decreasing=TRUE))
+
+cbind(sort(table(main_all$`Insurance Scheme`),decreasing=TRUE),sort(100*round(prop.table(table(main_all$`Insurance Scheme`)),5),deparse.level=2,decreasing=TRUE))
+cbind(sort(table(main_all$`Medical Card Holder`),decreasing=TRUE),sort(100*round(prop.table(table(main_all$`Medical Card Holder`)),5),deparse.level=2,decreasing=TRUE))
+cbind(sort(table(main_all$`Private Indicator`),decreasing=TRUE),sort(100*round(prop.table(table(main_all$`Private Indicator`)),5),deparse.level=2,decreasing=TRUE))
+
+
+cbind(sort(table(main_all$orderDay),decreasing=TRUE),sort(100*round(prop.table(table(main_all$orderDay)),5),deparse.level=2,decreasing=TRUE))
+cbind(sort(table(main_all$orderMonth),decreasing=TRUE),sort(100*round(prop.table(table(main_all$orderMonth)),5),deparse.level=2,decreasing=TRUE))
+cbind(sort(table(substring(main_all$`Order MonthYear`,4,7)), decreasing=TRUE),sort(100*round(prop.table(table(substring(main_all$`Order MonthYear`,4,7))),5),deparse.level=2,decreasing=TRUE)) #year, same sample size every year
+cbind(sort(table(main_all$`Order MonthYear`),decreasing=TRUE),sort(100*round(prop.table(table(main_all$`Order MonthYear`)),5),deparse.level=2,decreasing=TRUE))
+
+cbind(sort(table(main_all$schdDay),decreasing=TRUE),sort(100*round(prop.table(table(main_all$schdDay)),5),deparse.level=2,decreasing=TRUE))
+cbind(sort(table(main_all$schdMonth),decreasing=TRUE),sort(100*round(prop.table(table(main_all$schdMonth)),5),deparse.level=2,decreasing=TRUE))
+cbind(sort(table(substring(main_all$`Scheduled MonthYear`,4,7)), decreasing=TRUE),sort(100*round(prop.table(table(substring(main_all$`Scheduled MonthYear`,4,7))),5),deparse.level=2,decreasing=TRUE)) #year
+cbind(sort(table(main_all$`Scheduled MonthYear`),decreasing=TRUE),sort(100*round(prop.table(table(main_all$`Scheduled MonthYear`)),5),deparse.level=2,decreasing=TRUE))
+
+cbind(sort(table(main_all$`No Order Items`),decreasing=TRUE),sort(100*round(prop.table(table(main_all$`No Order Items`)),5),deparse.level=2,decreasing=TRUE))
+cbind(sort(table(main_all$`Future Breach`),decreasing=TRUE),sort(100*round(prop.table(table(main_all$`Future Breach`)),5),deparse.level=2,decreasing=TRUE))
+
+# Scheduled orders
+## Outcome description
+### Convert dependent variable (outcome, response var.) to factor type if not yet
+table(main_processed$Record.Type,main_processed$Attendance.MonthYear)
+
+## Predictor description (categorical)
+
+### Data frame for nominal/ binary values of variables
+
+options(digits=2)
+...
+
+
+## Predictor description (numeric)
+summary(main_processed$Age.at.Attendance)
+stat.desc(main_processed$Age.at.Attendance, basic=F)
+skew(main_processed$Age.at.Attendance)
+kurtosis(main_processed$Age.at.Attendance)
+
+summary(main_processed$daysDiff_attendanceAppoint)
+stat.desc(main_processed$daysDiff_attendanceAppoint, basic=F)
+skew(main_processed$daysDiff_attendanceAppoint)
+kurtosis(main_processed$daysDiff_attendanceAppoint)
+
+summary(main_processed$daysDiff_attendanceBooked)
+stat.desc(main_processed$daysDiff_attendanceBooked, basic=F)
+skew(main_processed$daysDiff_attendanceBooked)
+kurtosis(main_processed$daysDiff_attendanceBooked)
+
+summary(main_processed$daysDiff_AppointBooked)
+stat.desc(main_processed$daysDiff_AppointBooked, basic=F)
+skew(main_processed$daysDiff_AppointBooked)
+kurtosis(main_processed$daysDiff_AppointBooked)
+
+```
+
+
+```{r plot, echo=FALSE}
+# One variable description
+## Creating graphs
+hist(main_processed$Age.at.Attendance)
+boxplot(main_processed$Age.at.Attendance,horizontal = T)
+
+set.seed(123)
+## Create the histogram with ggplot
+gg_orderAvg <- ggplot(main_all, aes(x=main_all$`Order to now (days) Average`))+ 
+  labs(x = "Order to now (days) Average")+ 
+  geom_histogram(binwidth=200, colour="black", aes(y=..density..,fill=..count..))+ 
+  scale_fill_gradient("Count", low="#DCDCDC", high="#7C7C7C")+ 
+  stat_function(fun=dnorm, color="red", args=list(mean=mean(main_all$`Order to now (days) Average`,na.rm = T), sd=sd(main_all$`Order to now (days) Average`,na.rm = T)))
+gg_orderAvg
+
+gg_subDep <- ggplot(main_all,aes(x=main_all$`Sub Department`)) + 
+  labs(x = "Radiology type 2020-2023") +
+  scale_x_discrete(limits=c("0 : RADIOLOGY GENERAL","3 : MAMMOGRAMS","1 : G.I. INVESTIGATIONS"), guide = guide_axis(n.dodge = 2)) +
+  geom_bar(colour="blue", fill="lightblue") +
+  geom_text(aes(y = ..count.., label = ..count..), stat="count", vjust=.3, size=3.5) +
+  theme_minimal()
+gg_subDep
+
+gg_specialty <- ggplot(main_all,aes(x=main_all$`Ordering Specialty Description`)) + 
+  labs(x = "Specialty type 2020-2023") +
+  scale_x_discrete(limits=c("0 : RADIOLOGY GENERAL","3 : MAMMOGRAMS","1 : G.I. INVESTIGATIONS")) +
+  geom_bar(colour="blue", fill="lightblue") +
+  geom_text(aes(y = ..count.., label = ..count..), stat="count", vjust=.3, size=3.5) +
+  theme_minimal()
+gg_subDep
+
+# pie(main_processed$New.Attendances, labels = names(main_processed$New.Attendances), clockwise = T, na.omit=T)
+
+gg_bookedDay <- ggplot(main_processed,aes(x=bookedDay)) +
+  labs(x = "Day of booking") +
+  scale_x_discrete(limits=c("Monday","Tuesday","Sunday","Wednesday","Saturday","Friday","Thursday"), guide = guide_axis(n.dodge = 2)) +
+  geom_bar(colour="blue", fill="lightblue")
+gg_bookedDay
+
+gg_appointmentDay <- ggplot(main_processed,aes(x=appointmentDay)) +
+  labs(x = "Day of appointment") +
+  scale_x_discrete(limits=c("Wednesday","Monday","Thursday","Tuesday","Friday","Sunday"), guide = guide_axis(n.dodge = 2)) +
+  geom_bar(colour="blue", fill="lightblue")
+gg_appointmentDay
+
+gg_attendanceDay <- ggplot(main_processed,aes(x=Attendance.Day)) +
+  labs(x = "Day of attendance") +
+  scale_x_discrete(limits=c("Wednesday","Monday","Friday","Thursday","Tuesday","Sunday","Saturday"), guide = guide_axis(n.dodge = 2)) +
+  geom_bar(colour="blue", fill="lightblue")
+gg_attendanceDay
+
+gg_bookedMonth <- ggplot(main_processed,aes(x=bookedMonth)) +
+  labs(x = "Day of booking") +
+  scale_x_discrete(limits=c("1","2","9","3","7","8","10","11","6","5","4","12"), guide = guide_axis(n.dodge = 2)) +
+  geom_bar(colour="blue", fill="lightblue")
+gg_bookedMonth
+
+gg_appointmentMonth <- ggplot(main_processed,aes(x=appointmentMonth)) +
+  labs(x = "Month of appointment") +
+  scale_x_discrete(limits=c("3","9","4","11","5","8","10","1","2","7","6","12"), guide = guide_axis(n.dodge = 2)) +
+  geom_bar(colour="blue", fill="lightblue")
+gg_appointmentMonth
+
+gg_attendanceMonth <- ggplot(main_processed,aes(x=Attendance.Month)) +
+  labs(x = "Month of attendance") +
+  scale_x_discrete(limits=c("November","September","March","October","January","August","July","February","May","June","December","April"), guide = guide_axis(n.dodge = 2)) +
+  geom_bar(colour="blue", fill="lightblue")
+gg_attendanceMonth
+
+gg_appointmentYear <- ggplot(main_processed,aes(x=appointmentYear)) +
+  labs(x = "Year of appointment") +
+  scale_x_discrete(limits=c("22","21","20","23"), guide = guide_axis(n.dodge = 2)) +
+  geom_bar(colour="blue", fill="lightblue")
+gg_appointmentYear
+
+gg_attendanceYear <- ggplot(main_processed,aes(x=Attendance.Year)) +
+  labs(x = "Year of attendance") +
+  scale_x_discrete(limits=c("2023","2022","2021","2020"), guide = guide_axis(n.dodge = 2)) +
+  geom_bar(colour="blue", fill="lightblue")
+gg_attendanceYear
+
+gg_attendanceType <- ggplot(main_processed,aes(x=Attendance.Type_recode)) +
+  labs(x = "Attendance Type") +
+  scale_x_discrete(limits=c("RETURN","NEW","VIRTUAL(New_Return)"), guide = guide_axis(n.dodge = 2)) +
+  geom_bar(colour="blue", fill="lightblue")
+gg_attendanceType
+
+gg_rebooked <- ggplot(main_processed,aes(x=Rebooked.Indicator)) +
+  labs(x = "Rebooking") +
+  geom_bar(colour="blue", fill="lightblue")
+gg_rebooked
+
+gg_gender <- ggplot(main_processed,aes(x=Gender)) +
+  labs(x = "Gender") +
+  geom_bar(colour="blue", fill="lightblue")
+gg_gender
+
+gg_addressDiff <- ggplot(main_processed,aes(x=addressDiff)) +
+  labs(x = "Difference of Home and Present Address") +
+  geom_bar(colour="blue", fill="lightblue")
+gg_addressDiff
+
+gg_residenceArea <- ggplot(main_processed,aes(x=Area.of.Residence_recode)) +
+  labs(x = "Area of residence") +
+  scale_x_discrete(limits=c("DUBLIN NTH","EASTERN & MIDLAND REGION (excl.Dublin)","NORTHERN WESTERN REGION","DUBLIN STH","SOUTHERN REGION","UNKNOWN","OUTSIDE IRELAND"), guide = guide_axis(n.dodge = 3)) +
+  geom_bar(colour="blue", fill="lightblue")
+gg_residenceArea
+
+
+## Booked Date
+bookedMonthYear <- data.frame(bookedMonthYear = na.omit(main_processed$bookedMonthYear))
+class(bookedMonthYear$bookedMonthYear)
+bookedMonthYear_tb <- data.frame(table(bookedMonthYear$bookedMonthYear))
+colnames(bookedMonthYear_tb) <- c("month", "freq")
+
+library(qcc)
+qcc(bookedMonthYear_tb$freq, type = "u", sizes = bookedMonthYear_tb$freq, labels=bookedMonthYear_tb$month, plot=T)
+qcc(bookedMonthYear_tb$freq, type = "c", labels=bookedMonthYear_tb$month, plot=T)
+
+library(qicharts)
+set.seed(7)
+qic(y = freq, n = freq, x = month, data = bookedMonthYear_tb, chart = 'u', multiply = 1000, main='Rate of bookings- u chart', ylab='Rate of booking in month unit', xlab='Month-Year', runvals = T, linevals = T)
+qic(y = freq, x = month, data = bookedMonthYear_tb, chart = 'run', main='Count of booking- run chart', ylab='Count of bookings in month unit', xlab='Month-Year', runvals = T, linevals = T)
+
+## Appointment Date
+appointmentMonthYear <- data.frame(appointmentMonthYear = na.omit(main_processed$appointmentMonthYear))
+appointmentMonthYear_tb <- data.frame(table(appointmentMonthYear$appointmentMonthYear))
+colnames(appointmentMonthYear_tb) <- c("month", "freq")
+
+#library(qcc)
+qcc(appointmentMonthYear_tb$freq, type = "u", sizes = appointmentMonthYear_tb$freq, labels=appointmentMonthYear_tb$month, plot=T)
+qcc(appointmentMonthYear_tb$freq, type = "c", labels=appointmentMonthYear_tb$month, plot=T)
+
+#library(qicharts)
+set.seed(7)
+qic(y = freq, n = freq, x = month, data = appointmentMonthYear_tb, chart = 'u', multiply = 1000, main='Rate of appointments- u chart', ylab='Rate of appts in month unit', xlab='Month-Year', runvals = T, linevals = T)
+qic(y = freq, x = month, data = appointmentMonthYear_tb, chart = 'run', main='Count of appointments- run chart', ylab='Count of appts in month unit', xlab='Month-Year', runvals = T, linevals = T)
+
+
+## Attendance Date
+attendanceMonthYear <- data.frame(attendanceMonthYear = na.omit(main_processed$Attendance.MonthYear))
+attendanceMonthYear_tb <- data.frame(table(attendanceMonthYear$attendanceMonthYear))
+colnames(attendanceMonthYear_tb) <- c("month", "freq")
+
+#library(qcc)
+qcc(attendanceMonthYear_tb$freq, type = "u", sizes = attendanceMonthYear_tb$freq, labels = attendanceMonthYear_tb$month, plot=T)
+qcc(attendanceMonthYear_tb$freq, type = "c", labels = attendanceMonthYear_tb$month, plot=T)
+
+#library(qicharts)
+set.seed(7)
+qic(y = freq, n = freq, x = month, data = attendanceMonthYear_tb, chart = 'u', multiply = 1000, main='Rate of attendances- u chart', ylab='Rate of attendances in month unit', xlab='Month-Year', runvals = T, linevals = T)
+qic(y = freq, x = month, data = attendanceMonthYear_tb, chart = 'run', main='Count of attendances- run chart', ylab='Count of attendances in month unit', xlab='Month-Year', runvals = T, linevals = T)
+
+
+## Cancellation
+cancelMonthYear_tb <- data.frame(table(main_processed$No.Cancels, main_processed$appointmentMonthYear))
+cancelledMonthYear_tb <- subset(cancelMonthYear_tb, cancelMonthYear_tb$Var1==1)
+dnaMonthYear_tb <- subset(cancelMonthYear_tb, cancelMonthYear_tb$Var1==0)
+
+cancelledMonthYear_tb$cancels <- cancelledMonthYear_tb$Var1
+cancelledMonthYear_tb$month <- cancelledMonthYear_tb$Var2
+
+dnaMonthYear_tb$dna <- dnaMonthYear_tb$Var1
+dnaMonthYear_tb$month <- dnaMonthYear_tb$Var2
+
+#library(qcc)
+qcc(cancelledMonthYear_tb$Freq, type = "u", sizes = cancelledMonthYear_tb$Freq, labels = cancelledMonthYear_tb$month, plot=T)
+qcc(cancelledMonthYear_tb$Freq, type = "c", labels = cancelledMonthYear_tb$month, plot=T)
+
+qcc(dnaMonthYear_tb$Freq, type = "u", sizes = dnaMonthYear_tb$Freq, labels = dnaMonthYear_tb$month, plot=T)
+qcc(dnaMonthYear_tb$Freq, type = "c", labels = dnaMonthYear_tb$month, plot=T)
+
+
+#library(qicharts)
+set.seed(7)
+qic(y = Freq, n = Freq, x = month, data = cancelledMonthYear_tb, chart = 'u', main='Rate of cancellations- u chart', ylab='Rate of cancellations in appointment month unit', xlab='Month-Year', runvals = T, linevals = T)
+qic(y = Freq, x = month, data = cancelledMonthYear_tb, chart = 'run', main='Count of cancellations- run chart', ylab='Count of cancellations in month unit', xlab='Month-Year', runvals = T, linevals = T)
+
+set.seed(7)
+qic(y = Freq, n = Freq, x = month, data = dnaMonthYear_tb, chart = 'u', main='Rate of DNAs- u chart', ylab='Percentage of DNAs in appointment month unit', xlab='Month-Year', runvals = T, linevals = T)
+qic(y = Freq, x = month, data = dnaMonthYear_tb, chart = 'run', main='Count of DNAs- run chart', ylab='Count of DNAs in month unit', xlab='Month-Year', runvals = T, linevals = T)
+
+# hist(main_processed$daysDiff_attendanceAppoint)
+# boxplot(main_processed$daysDiff_attendanceAppoint,horizontal = T)
+
+# ggplot(main_processed, aes(x = main_processed$daysDiff_attendanceAppoint)) +
+#   geom_histogram(binwidth = 2, color = "black", aes(y=..density..,fill=..count..)) +
+#   scale_fill_gradient("Count", low="#DCDCDC", high="#7C7C7C") +
+#   geom_density(color = "blue", fill = "lightblue", alpha = 0.5) +  # Add density curve
+#   labs(x = "Difference of days between Attendance and Appointment date", y = "Density") +  # Customize axis labels
+#   stat_function(fun=dnorm, color="red", args=list(mean=mean(main_processed$daysDiff_attendanceAppoint,na.rm = T), sd=sd(main_processed$daysDiff_attendanceAppoint,na.rm = T))) +
+#   theme_minimal()  # Use a minimal theme
+
+
+# hist(main_processed$daysDiff_attendanceBooked)
+# boxplot(main_processed$daysDiff_attendanceBooked,horizontal = T)
+
+# Two variables
+library(tidyverse)
+library(plotly)
+
+## Booked date
+recordTypeBooked_tb <- data.frame(table(main_processed$Record.Type, main_processed$Booked.Date))
+recordTypeBooked_tb$bookedMonthYear <- as.yearmon(paste(year(recordTypeBooked_tb$Var2), month(recordTypeBooked_tb$Var2)), "%Y %m") #change date from char format to numeric by using library(zoo)
+#recordTypeBooked_tb$bookedMonthYear <- year(recordTypeBooked_tb$Var2) * 100 + month(recordTypeBooked_tb$Var2)
+
+### values in x, y axis need to be in numerical format
+recordTypeBooked_tb %>%
+  group_by(bookedMonthYear) %>%
+  mutate(sum_booking = sum(Freq, na.rm=T)) %>%
+  slice(1) %>% #attendance
+  ungroup() %>%
+  ggplot(aes(x=bookedMonthYear)) +
+  geom_point(aes(y=Freq, color=Var1)) +
+  geom_line(aes(y=Freq, color=Var1), linewidth=.5, alpha=.8) +
+  scale_y_continuous(labels = scales::number) +
+  labs(title = "Number of Attendances over Booked Date",
+       subtitle = "How do Record Types differ by Booked Date?",
+       x = "Month-Year", y = "Total No.", color = "Record Types") +
+  theme_fivethirtyeight() +
+  theme(axis.title = element_text(), axis.text.x = element_text(angle = -90, vjust = .5))
+
+recordTypeBooked_tb %>%
+  group_by(bookedMonthYear) %>%
+  mutate(sum_booking = sum(Freq, na.rm=T)) %>%
+  slice(2) %>% #cancellation
+  ungroup() %>%
+  ggplot(aes(x=bookedMonthYear)) +
+  geom_point(aes(y=Freq, color=Var1)) +
+  geom_line(aes(y=Freq, color=Var1), linewidth=.5, alpha=.8) +
+  scale_y_continuous(labels = scales::number) +
+  labs(title = "Number of Cancellations over Booked Date",
+       subtitle = "How do Record Types differ by Booked Date?",
+       x = "Month-Year", y = "Total No.", color = "Record Types") +
+  theme_fivethirtyeight() +
+  theme(axis.title = element_text(), axis.text.x = element_text(angle = -90, vjust = .5))
+
+recordTypeBooked_tb %>%
+  group_by(bookedMonthYear) %>%
+  mutate(sum_booking = sum(Freq, na.rm=T)) %>%
+  slice(3) %>% #dna
+  ungroup() %>%
+  ggplot(aes(x=bookedMonthYear)) +
+  geom_point(aes(y=Freq, color=Var1)) +
+  geom_line(aes(y=Freq, color=Var1), linewidth=.5, alpha=.8) +
+  scale_y_continuous(labels = scales::number) +
+  labs(title = "Number of DNAs over Booked Date",
+       subtitle = "How do Record Types differ by Booked Date?",
+       x = "Month-Year", y = "Total No.", color = "Record Types") +
+  theme_fivethirtyeight() +
+  theme(axis.title = element_text(), axis.text.x = element_text(angle = -90, vjust = .5))
+
+# recordTypeBooked_tb %>%
+#   group_by(bookedMonthYear) %>%
+#   mutate(sum_booking = sum(Freq, na.rm=T)) %>%
+#   slice(1) %>%
+#   ungroup() %>%
+#   ggplot(aes(x=bookedMonthYear,y=Freq, group=interaction(bookedMonthYear,Var1))) +
+#   geom_boxplot() +
+#   labs(title = "Number of Record Types over Booked Date",
+#        x = "Month-Year", y = "Total No.", color = "Record Types") +
+#   theme_fivethirtyeight() +
+#   theme(axis.title = element_text(), axis.text.x = element_text(angle = -90, vjust = .5))
+
+## Appointment date
+recordTypeAppt_tb <- data.frame(table(main_processed$Record.Type, main_processed$Appointment.Date))
+recordTypeAppt_tb$apptMonthYear <- as.yearmon(paste(year(recordTypeAppt_tb$Var2), month(recordTypeAppt_tb$Var2)), "%Y %m") #change date from char format to numeric by using library(zoo)
+
+### values in x, y axis need to be in numerical format
+recordTypeAppt_tb %>%
+  group_by(apptMonthYear) %>%
+  mutate(sum_booking = sum(Freq, na.rm=T)) %>%
+  slice(2) %>% #start with cancellation as no appt date for attendance
+  ungroup() %>%
+  ggplot(aes(x=apptMonthYear, y=Freq, color=Var1)) +
+  geom_point(aes(y=Freq, color=Var1)) +
+  geom_line(aes(y=Freq, color=Var1), linewidth=.5, alpha=.8) +
+  scale_y_continuous(labels = scales::number) +
+  labs(title = "Number of Cancellations over Appointment Time",
+       subtitle = "How do Record Types differ by Appointment Time?",
+       x = "Month-Year", y = "Number of Record Types", color = "Record Types") +
+  theme_fivethirtyeight() +
+  theme(axis.title = element_text(), axis.text.x = element_text(angle = -90, vjust = .5))
+
+recordTypeAppt_tb %>%
+  group_by(apptMonthYear) %>%
+  mutate(sum_booking = sum(Freq, na.rm=T)) %>%
+  slice(3) %>% #dna
+  ungroup() %>%
+  ggplot(aes(x=apptMonthYear, y=Freq, color=Var1)) +
+  geom_point(aes(y=Freq, color=Var1)) +
+  geom_line(aes(y=Freq, color=Var1), linewidth=.5, alpha=.8) +
+  scale_y_continuous(labels = scales::number) +
+  labs(title = "Number of DNAs over Appointment Time",
+       subtitle = "How do Record Types differ by Appointment Time?",
+       x = "Month-Year", y = "Number of Record Types", color = "Record Types") +
+  theme_fivethirtyeight() +
+  theme(axis.title = element_text(), axis.text.x = element_text(angle = -90, vjust = .5))
+
+
+## Attendance date
+recordTypeAtd_tb <- data.frame(table(main_processed$Record.Type,main_processed$Attendance.Date,main_processed$New.Attendances))
+recordTypeAtd_tb$atdMonthYear <- as.yearmon(paste(year(recordTypeAtd_tb$Var2), month(recordTypeAtd_tb$Var2)), "%Y %m") #change date from char format to numeric by using library(zoo)
+
+### values in x, y axis need to be in numerical format
+recordTypeAtd_tb %>%
+  group_by(atdMonthYear) %>%
+  mutate(sum_booking = sum(Freq, na.rm=T)) %>%
+  slice(1) %>% #attendances, no attendance date for cancellation/DNA
+  ungroup() %>%
+  ggplot(aes(x=atdMonthYear, y=Freq, color=Var1)) +
+  geom_point(aes(y=Freq, color=Var1)) +
+  geom_line(aes(y=Freq, color=Var1), linewidth=.5, alpha=.8) +
+  scale_y_continuous(labels = scales::number) +
+  labs(title = "Number of Attendances over Attendance Time",
+       subtitle = "How do Record Types differ by Attendance Time?",
+       x = "Month-Year", y = "Number of Record Types", color = "Record Types") +
+  theme_fivethirtyeight() +
+  theme(axis.title = element_text(), axis.text.x = element_text(angle = -90, vjust = .5))
+
+recordTypeAtd_tb %>%
+  group_by(atdMonthYear) %>%
+  mutate(sum_booking = sum(Freq, na.rm=T)) %>%
+  slice(1) %>% #new attendances
+  ungroup() %>%
+  ggplot(aes(x=atdMonthYear, y=Freq, color=Var3)) +
+  geom_point(aes(y=Freq, color=Var3)) +
+  geom_line(aes(y=Freq, color=Var3), linewidth=.5, alpha=.8) +
+  scale_y_continuous(labels = scales::number) +
+  labs(title = "Number of New Attendances over Attendance Time",
+       x = "Month-Year", y = "Number of Record Types", color = "Record Types") +
+  theme_fivethirtyeight() +
+  theme(axis.title = element_text(), axis.text.x = element_text(angle = -90, vjust = .5)) 
+
+recordTypeAtd_tb %>%
+  group_by(atdMonthYear) %>%
+  mutate(sum_booking = sum(Freq, na.rm=T)) %>%
+  slice(2) %>% #return attendances
+  ungroup() %>%
+  ggplot(aes(x=atdMonthYear, y=Freq, color=Var3)) +
+  geom_point(aes(y=Freq, color=Var3)) +
+  geom_line(aes(y=Freq, color=Var3), linewidth=.5, alpha=.8) +
+  scale_y_continuous(labels = scales::number) +
+  labs(title = "Number of Return Attendances over Attendance Time",
+       x = "Month-Year", y = "Number of Record Types", color = "Record Types") +
+  theme_fivethirtyeight() +
+  theme(axis.title = element_text(), axis.text.x = element_text(angle = -90, vjust = .5))
+
+## Indicator
+indicator_tb <- data.frame(table(main_processed$No.Cancels,main_processed$Attendance.Date,main_processed$Cancelled.Indicator,main_processed$Rebooked.Indicator))
+# library(reshape2)
+# indicator_tb <- rename(indicator_tb, c(Var1="Cancels",Var2="atdDate",Var3="")) #check the old and new name of variables to match
+indicator_tb$atdMonthYear <- as.yearmon(paste(year(recordTypeAtd_tb$Var2), month(recordTypeAtd_tb$Var2)), "%Y %m") #change date from char format to numeric by using library(zoo)
+
+### values in x, y axis need to be in numerical format
+# indicator_tb %>%
+#   group_by(atdMonthYear) %>%
+#   mutate(sum_booking = sum(Freq, na.rm=T)) %>%
+#   slice(1) %>% #attendances, no attendance date for cancellation/DNA
+#   ungroup() %>%
+#   ggplot(aes(x=atdMonthYear, y=Freq, color=Var3)) +
+#   geom_point(aes(y=Freq, color=Var3)) +
+#   geom_line(aes(y=Freq, color=Var3), linewidth=.5, alpha=.8) +
+#   scale_y_continuous(labels = scales::number) +
+#   labs(title = "Number of Cancelled Indicator over Attendance Time",
+#        x = "Month-Year", y = "Number of Cancelled Indicator", color = "Cancelled indicator") +
+#   theme_fivethirtyeight() +
+#   theme(axis.title = element_text(), axis.text.x = element_text(angle = -90, vjust = .5))
+
+```
+
+
+# Correlation of outcome and predictor (nominal and nominal)
+## Total No. correlation
+```{r correlation, total}
+ 
+ ## Record Type & Clinic relevance
+#library(dplyr)
+CrossTable(main_processed$Clinic.Type_recode, main_processed$Record.Type, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Clinic.Code, main_processed$Record.Type, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$NurseFlag, main_processed$Record.Type, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Referral.Source_recode, main_processed$Record.Type, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+#CrossTable(main_processed$Referring.Hospital, main_processed$Record.Type, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Consultant_recode, main_processed$Record.Type, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Insurance.Scheme_recode, main_processed$Record.Type, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Eligibility_recode, main_processed$Record.Type, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Booking.Type_recode, main_processed$Record.Type, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Hospital.Catchment_recode, main_processed$Record.Type, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Attendance.Type_recode, main_processed$Record.Type, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+
+
+## Record Type & Date relevance
+CrossTable(main_processed$bookedDay, main_processed$Record.Type, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$bookedMonthYear, main_processed$Record.Type, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+
+CrossTable(main_processed$Attendance.Day, main_processed$Record.Type, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Attendance.Month, main_processed$Record.Type, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Attendance.Year, main_processed$Record.Type, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Attendance.MonthYear, main_processed$Record.Type, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+
+
+### & difference of days
+bartlett.test(main_processed$daysDiff_attendanceAppoint,main_processed$Record.Type)
+kruskal.test(main_processed$daysDiff_attendanceAppoint ~ main_processed$Record.Type, data=main_processed)
+dunn_result <- dunn.test(main_processed$daysDiff_attendanceAppoint, g=main_processed$Record.Type, method="bonferroni")
+
+bartlett.test(main_processed$daysDiff_attendanceBooked,main_processed$Record.Type)
+kruskal.test(main_processed$daysDiff_attendanceBooked ~ main_processed$Record.Type, data=main_processed)
+dunn_result <- dunn.test(main_processed$daysDiff_attendanceBooked, g=main_processed$Record.Type, method="bonferroni")
+
+
+## Record Type & Patient characteristics relevance
+CrossTable(main_processed$Gender, main_processed$Record.Type, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+
+CrossTable(main_processed$Age.at.Attendance.Cat.HSE, main_processed$Record.Type, digits=2, fisher=F, chisq=TRUE, expected=TRUE) #age group
+bartlett.test(main_processed$Age.at.Attendance,main_processed$Record.Type) # unequal variances
+kruskal.test(main_processed$Age.at.Attendance ~ main_processed$Record.Type, data=main_processed)
+dunn_result <- dunn.test(main_processed$Age.at.Attendance, g=main_processed$Record.Type, method="bonferroni") #run library(dunn.test) for this test
+
+CrossTable(main_processed$Area.of.Residence_recode, main_processed$Record.Type, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$addressDiff, main_processed$Record.Type, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+
+```
+
+## Cancellation & DNA correlation
+* Clinic relevance: Consultant, Insurance scheme, Eligibility, Hospital catchment, Clinic type, Clinic code, Referral source, Booking Type
+* Date relevance: booked Day, booked Month-Year, appointment Day, appointment Month-Year, daysDiff_AppointBooked, attendance Day, attendance Month-Year
+* Patient relevance: Gender, Age at attendance, Area of residence, address difference
+* Cancellation group: Reason for cancellation, Rebooked indicator
+
+```{r correlation, cancellation & DNA}
+# cancellation (No.Cancels=1) & DNA (No.Cancels=0)
+
+## clinic relevance
+CrossTable(main_processed$Clinic.Type_recode, main_processed$No.Cancels, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Clinic.Code, main_processed$No.Cancels, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$NurseFlag, main_processed$No.Cancels, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Referral.Source_recode, main_processed$No.Cancels, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+# CrossTable(main_processed$Referring.Hospital, main_processed$No.Cancels, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Consultant_recode, main_processed$No.Cancels, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Insurance.Scheme_recode, main_processed$No.Cancels, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Eligibility_recode, main_processed$No.Cancels, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Booking.Type_recode, main_processed$No.Cancels, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Hospital.Catchment_recode, main_processed$No.Cancels, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+
+
+## date relevance
+### difference between Booked and Appointment factors in Cancellation
+
+CrossTable(main_processed$bookedDay, main_processed$No.Cancels, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$bookedMonthYear, main_processed$No.Cancels, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+
+CrossTable(main_processed$appointmentDay, main_processed$No.Cancels, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$appointmentMonthYear, main_processed$No.Cancels, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+
+CrossTable(main_processed$Rebooked.Indicator, main_processed$No.Cancels, digits=2, fisher=T, chisq=TRUE, expected=TRUE)
+
+leveneTest(daysDiff_AppointBooked ~ as.factor(No.Cancels), data=main_processed) #leveneTest is Ha
+t.test(daysDiff_AppointBooked ~ No.Cancels, var.equal=F, data=main_processed)
+
+## patient characteristics relevance
+CrossTable(main_processed$Gender, main_processed$No.Cancels, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
+
+CrossTable(main_processed$Age.at.Attendance.Cat.HSE, main_processed$No.Cancels, digits=2, fisher=F, chisq=TRUE, expected=TRUE) # age group
+leveneTest(Age.at.Attendance ~ as.factor(No.Cancels), data=main_processed)
+t.test(Age.at.Attendance ~ No.Cancels, var.equal=FALSE, data=main_processed) #leveneTest is Ha
+
+CrossTable(main_processed$Area.of.Residence_recode, main_processed$No.Cancels, digits=2, fisher=F, chisq=TRUE, expected=TRUE) # remove Na or impute where no residence
+CrossTable(main_processed$addressDiff, main_processed$No.Cancels, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
+
+CrossTable(main_processed$Reason.for.Cancellation_recode, main_processed$Cancellation.Group, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Cancellation.Group, main_processed$Rebooked.Indicator, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Reason.for.Cancellation_recode, main_processed$Rebooked.Indicator, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+```
+
+
+# New Attendance correlation
+* Clinic relevance: Consultant, Insurance scheme, Eligibility, Hospital catchment, Clinic type, Clinic code, Nurse flag, Referral source, Booking Type
+* Date relevance: daysDiff_attendanceBooked daysDiff_AppointBooked
+* Patient relevance: Gender, Age at attendance, Area of residence
+* Cancellation group: Reason for cancellation, Rebooked indicator
+
+```{r correlation, new attendance}
+## clinic relevance
+CrossTable(main_processed$Clinic.Type_recode, main_processed$New.Attendances, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Clinic.Code, main_processed$New.Attendances, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$NurseFlag, main_processed$New.Attendances, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Referral.Source_recode, main_processed$New.Attendances, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+#CrossTable(main_processed$Referring.Hospital, main_processed$New.Attendances, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Consultant_recode, main_processed$New.Attendances, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Insurance.Scheme_recode, main_processed$New.Attendances, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Eligibility_recode, main_processed$New.Attendances, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Booking.Type_recode, main_processed$New.Attendances, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Hospital.Catchment_recode, main_processed$New.Attendances, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+
+
+## date relevance
+CrossTable(main_processed$bookedDay, main_processed$New.Attendances, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$bookedMonthYear, main_processed$New.Attendances, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+
+CrossTable(main_processed$Attendance.Day, main_processed$New.Attendances, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+CrossTable(main_processed$Attendance.MonthYear, main_processed$New.Attendances, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+
+leveneTest(daysDiff_attendanceBooked ~ as.factor(New.Attendances), data=main_processed) #leveneTest is Ha
+t.test(daysDiff_attendanceBooked ~ New.Attendances, var.equal=F, data=main_processed)
+
+## patient characteristics relevance
+CrossTable(main_processed$Gender, main_processed$New.Attendances, digits=2, fisher=TRUE, chisq=TRUE, expected=TRUE)
+
+CrossTable(main_processed$Age.at.Attendance.Cat.HSE, main_processed$New.Attendances, digits=2, fisher=F, chisq=TRUE, expected=TRUE) # age group
+leveneTest(Age.at.Attendance ~ as.factor(New.Attendances), data=main_processed)
+t.test(Age.at.Attendance ~ New.Attendances, var.equal=FALSE, data=main_processed) #leveneTest is Ha
+wilcox.test(main_processed$Age.at.Attendance ~ main_processed$New.Attendances)
+
+CrossTable(main_processed$Area.of.Residence_recode, main_processed$New.Attendances, digits=2, fisher=F, chisq=TRUE, expected=TRUE) # remove Na or impute where no residence
+CrossTable(main_processed$addressDiff, main_processed$New.Attendances, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+```
+# Cancellation
+```{r cancellation description}
+# convert the non-numeric variables to numeric values (the lower the number, the higher frequency)
+main_processed$Referral.Source_numeric <- mapvalues(main_processed$Referral.Source_recode, from = c("CLINIC","EMERGENCY DEPT","GP","Elsew outside Mater","WARD","Elsew of Mater","OTHER CONSULTANT"), to = c(1:7))
+main_processed$Clinic.Type_numeric <- mapvalues(main_processed$Clinic.Type_recode, from = c("GENERAL","SPINErelated","MUSCULOSKELETALrelated","PODIATRY","UPPER_LIMBrelated","NotLocatedInMater","BACK_PAINrelated","NTPFfund"), to = c(1:8))
+main_processed$Consultant_numeric <- mapvalues(main_processed$Consultant_recode, from = c("OHEIRE","MOROP","COLGAN","SYNNOT","XX","MORRI","LYONSF","BRIAIN","MARA","TIMLIN","ONEISH","BUTLER","CASSID","DODDSM","HYNESD","CASHMA","MURMAR","LYNCSA","MCSORK","ORTCON","CARMOO","FRA"), to = c(1:22))
+main_processed$Insurance.Scheme_numeric <- mapvalues(main_processed$Insurance.Scheme_recode, from = c("U","D","V","B","I","S","G","O","E","P","J","H","A","C","M"), to = c(1:15))
+main_processed$Eligibility_numeric <- mapvalues(main_processed$Eligibility_recode, from = c("NON MEDICAL CARD","MEDICAL CARD","ELIGIBILITY UNKNOWN","EXEMPT","RESEARCH/NATIONAL PROG.","ACUTE UNCLASSIFIED","NON ACUTE UNCLASSIFIED"), to = c(1:7))
+main_processed$Booking.Type_numeric <- mapvalues(main_processed$Booking.Type_recode, from = c("RETURN","NEW","WARD"), to = c(1:3))
+main_processed$Hospital.Catchment_numeric <- mapvalues(main_processed$Hospital.Catchment_recode, from = c("National","Mater","Connolly","Beaumont","James","Vincents","Tallaght","International"), to = c(1:8))
+main_processed$appointmentDay_numeric <- mapvalues(main_processed$appointmentDay, from = c("Wednesday","Monday","Thursday","Tuesday","Friday","Sunday"), to = c(1:6))
+main_processed$appointmentMonthYear_numeric <- mapvalues(main_processed$appointmentMonthYear, from = c("Mar 2020","Jan 2021","Mar 2022","Apr 2020","May 2022","Nov 2021","Sep 2022","Sep 2020","Apr 2022","Sep 2021","Aug 2022","Jan 2022","Jun 2022","Jul 2022","Feb 2022","Dec 2021","Jul 2021","Oct 2021","Jan 2023","Nov 2022","Aug 2021","May 2023","May 2021","Oct 2023","Nov 2023","Jun 2021","Feb 2021","Feb 2020","Oct 2022","Mar 2021","Apr 2023","Sep 2023","Aug 2023","Oct 2020","Jul 2023","Apr 2021","Mar 2023","Nov 2020","Dec 2022","Jun 2020","Aug 2020","May 2020","Dec 2023","Dec 2020","Jun 2023","Feb 2023","Jul 2020","Jan 2020"), to = c(1:48))
+main_processed$bookedDay_numeric <- mapvalues(main_processed$bookedDay, from = c("Monday","Tuesday","Sunday","Wednesday","Saturday","Friday","Thursday"), to = c(1:7))
+main_processed$bookedMonthYear_numeric <- mapvalues(main_processed$bookedMonthYear, from = c("Jan 2020","Feb 2020","Sep 2020","Mar 2020","Jul 2020","Aug 2020","Oct 2020","Nov 2020","Jun 2020","May 2020","Apr 2020","Dec 2020"), to = c(1:12))
+main_processed$Gender_numeric <- mapvalues(main_processed$Gender, from = c("Male","Female","Unknown"), to = c(1:3))
+main_processed$Area.of.Residence_numeric <- mapvalues(main_processed$Area.of.Residence_recode, from = c("DUBLIN NTH","EASTERN & MIDLAND REGION (excl.Dublin)","DUBLIN STH","SOUTHERN REGION","NORTHERN WESTERN REGION","UNKNOWN","OUTSIDE IRELAND"), to = c(1:7))
+main_processed$Rebooked.Indicator_numeric <- mapvalues(main_processed$Rebooked.Indicator, from = c("Yes","No"), to = c(1,0))
+main_processed$Cancellation.Group_numeric <- mapvalues(main_processed$Cancellation.Group, from = c("Hospital","Patient","DNA","Validation"), to = c(1:4))
+main_processed$Reason.for.Cancellation_numeric <- mapvalues(main_processed$Reason.for.Cancellation_recode, from = c("No show","By Patient","By Cslt/AN/Tech","By Hospital","By Covid","By Patient-health conditions"), to = c(1:6))
+
+write.csv(main_processed[,c("Gender_numeric","Age.at.Attendance","Area.of.Residence_numeric","addressDiff","No.Cancels","Referral.Source_numeric","Clinic.Type_numeric","Consultant_numeric","Insurance.Scheme_numeric","Eligibility_numeric","Hospital.Catchment_numeric","Booking.Type_numeric","Rebooked.Indicator_numeric","Cancellation.Group_numeric","Reason.for.Cancellation_numeric","appointmentDay_numeric","appointmentMonthYear_numeric","bookedDay_numeric","bookedMonthYear_numeric","daysDiff_AppointBooked")],"spineDetails_cancel.csv")
+
+main_processed_cancel <- read.csv("spineDetails_cancel.csv")
+main_processed_cancel <- subset(main_processed_cancel, is.na(main_processed_cancel$No.Cancels)==F)
+
+main_processed_cancel <- main_processed_cancel %>% mutate_if(is.character,as.numeric)
+cor(main_processed_cancel, method = "spearman")
+library(corrplot)
+corrplot(cor(main_processed_cancel))
+
+gg_cancellationGroup <- ggplot(main_processed,aes(x=Cancellation.Group)) +
+  labs(x = "Cancellation Group") +
+  scale_x_discrete(limits=c("Hospital","Patient","DNA","Validation")) +
+  geom_bar(colour="blue", fill="lightblue")
+gg_cancellationGroup
+
+gg_cancelReason <- ggplot(main_processed,aes(x=Reason.for.Cancellation_recode)) +
+  labs(x = "Reason for Cancellation") +
+  scale_x_discrete(limits=c("No show","By Patient","By Cslt/AN/Tech","By Hospital","By Covid","By Patient-health conditions"), guide = guide_axis(n.dodge = 2)) +
+  geom_bar(colour="blue", fill="lightblue")
+gg_cancelReason
+
+```
+
+# Logistic Regression model
+## Build baseline model of cancellations with predictors
+* strong correlation between (Referral source and Booking type), (Clinic type and Booking type), (Consultant and Appointment day), (Consultant and Clinic code)
+* moderate correlation between (Appointment day and Clinic code), (Clinic type and Clinic code), (Clinic type and Referral source), (Clinic type and No.Cancels), (Clinic type and Age)
+* weak correlation between (Booking type and Age), (Booking type and Clinic code)
+
+1. Model 1: No.Cancels ~ Clinic.Type_numeric + Referral.Source_numeric + Consultant_numeric + Insurance.Scheme_numeric + Eligibility_numeric + Booking.Type_numeric + Hospital.Catchment_numeric + Rebooked.Indicator_numeric + Reason.for.Cancellation_numeric
+* AIC: 14333
+* AUC: 0.91
+* nagelkerke R squared: 0.6
+* Confusion matrix: accuracy (0.84), precision (0.32), recall (0.1), prevalence (0.23), detection rate (0.18)
+
+2. Model 2: No.Cancels ~ appointmentDay_numeric + appointmentMonthYear_numeric + bookedDay_numeric + bookedMonthYear_numeric + daysDiff_AppointBooked
+* AIC: 26316
+* AUC: 0.61
+* nagelkerke R squared: 0.04
+* Confusion matrix: accuracy (0.5), precision (0.77), recall (1), prevalence (0.23), detection rate (0)
+
+3. Model 3: No.Cancels ~ Gender_numeric + Age.at.Attendance + Area.of.Residence_numeric + addressDiff
+* AIC: 26518
+* AUC: 0.59
+* nagelkerke R squared: 0.028
+* Confusion matrix: accuracy (0.5), precision (0.997), recall (0.77), prevalence (0.23), detection rate (0.002)
+
+4. Model: No.Cancels ~ Gender_numeric + Age.at.Attendance + Area.of.Residence_numeric + addressDiff + Referral.Source_numeric + Clinic.Type_numeric + Consultant_numeric + Insurance.Scheme_numeric + Eligibility_numeric + Hospital.Catchment_numeric + Booking.Type_numeric + appointmentDay_numeric + appointmentMonthYear_numeric + bookedDay_numeric + bookedMonthYear_numeric
+* AIC: 14031
+* AUC: 0.91
+* nagelkerke R squared: 0.61
+* Confusion matrix: accuracy (0.81), precision (0.92), recall (0.88), prevalence (0.23), detection rate (0.17)
+
+***
+> 
++ AIC the smallest AIC provides the best model
++ AUC (area under the ROC curve) the closer to 1 the more correct predictions
++ predict: predict the values based on the previous data behaviors and thus by fitting that data to the model
++ plogis: Logistic Cumulative Distribution Function
++ Cox and Snell R square: Analysis_Survival_Cox Regression. The coefficients in a Cox regression relate to hazard; a positive coefficient indicates a worse prognosis and a negative coefficient indicates a protective effect of the variable with which it is associated
++ nagelkerke: a measure of goodness of fit in logistic regression analysis, a modification of the Cox and Snell R Square. Ranges [0,1], a common rule of thumb (<= 0.2: weak relationship, 0.2-0.4: moderate, >= 0.4: strong relationship).
++ confusionMatrix: matrix between actual and predicted values
++ vif = 1/(1-Ri^2) = 1/tolerance. Vif >4 or tolearance <0.25: multicollinearity might exist; vif >10 or tolerance <0.1: signigicant multicollinearity that needs to be corrected. Vif interpret if model has problems estimating the coefficient
+
+_variables need to be recoded as numeric to run any regression_
+
+<!-- ```{r model of cancellation} -->
+
+<!-- # Create training and test dataset samples  -->
+<!-- sample <- sample(c(TRUE,FALSE), nrow(main_processed_cancel), replace=TRUE, prob=c(0.7,0.3)) -->
+<!-- train <- main_processed_cancel[sample, ] -->
+<!-- test <- main_processed_cancel[!sample, ] -->
+
+<!-- # Fit the logistic regression model -->
+<!-- ## with Clinic relevance -->
+<!-- # map probabilities to log-odds, predicted probabilities are within the [0, 1] range -->
+<!-- logmodel1 <- glm(formula = No.Cancels ~ Clinic.Type_numeric + Referral.Source_numeric + Consultant_numeric + Insurance.Scheme_numeric + Eligibility_numeric + Booking.Type_numeric + Hospital.Catchment_numeric + Rebooked.Indicator_numeric + Reason.for.Cancellation_numeric, family = binomial(link = "logit"), data = train) -->
+
+<!-- summary(logmodel1) -->
+
+<!-- exp(coefficients(logmodel1)) -->
+
+<!-- # Assess Model Fit -->
+<!-- nagelkerke(logmodel1) #library(rcompanion) -->
+
+<!-- # Calculate the VIF values of each variable to see if multicollinearity is a problem -->
+<!-- vif(logmodel1) #library(regclass), library(car) -->
+
+<!-- # Calculate probability of cancellation for each individual in test dataset -->
+<!-- ## Obtain predicted probabilities: continuous values (not factors) -->
+<!-- predicted1 <- predict(logmodel1, test, type=c("response")) #library(rbenchmark) -->
+
+<!-- ## Find the optimal probability -->
+<!-- # library(InformationValue) -->
+<!-- # Warning in install.packages : -->
+<!-- #   unable to access index for repository https://cran.rstudio.com/src/contrib: -->
+<!-- #   cannot open URL 'https://cran.rstudio.com/src/contrib/PACKAGES' -->
+<!-- # Warning in install.packages : -->
+<!-- #   package ‘InformationValue’ is not available for this version of R -->
+
+<!-- # optimal <-optimalCutoff(test$No.Cancels,predicted1)[1] -->
+<!-- # optimal -->
+
+<!-- ## Convert predicted probabilities to binary predictions -->
+<!-- binary_predicted1 <- ifelse(predicted1 >= 0.5, 1, 0) #threshold=0.5 -->
+
+<!-- ## Create confusion matrix to show predictions compared to the actual defaults  -->
+<!-- confusionMatrix(factor(binary_predicted1), factor(test$No.Cancels)) #library(caret), test$No.Cancels represents the actual response variable, binary_predictions are the binary predictions based on the threshold -->
+<!-- confusion_matrix(logmodel1) #library(regclass) -->
+<!-- confusion_matrix(logmodel1, test) #library(regclass) -->
+
+<!-- ## Calculate the sensitivity, specificity and total misclassification error if not shown in confusionMatrix -->
+<!-- # sensitivity(factor(binary_predicted1), factor(test$No.Cancels)) -->
+<!-- # specificity(factor(binary_predicted1), factor(test$No.Cancels)) -->
+<!-- # misClassError(factor(binary_predicted1), factor(test$No.Cancels), threshold=optimal) -->
+
+<!-- ## Plot ROC curve which displays the % of True positivity predicted by the model as the prediction probability cutoff is [0,1] -->
+<!-- # plot.roc(binary_predicted1, test$No.Cancels) #library(pROC) plot.ROC or plotROC -->
+
+<!-- # lroc(logmodel1,graph=T) #for AUC but has a very loooong $diagnostic.table -->
+
+
+<!-- ## with Date relevance -->
+<!-- logmodel2 <- glm(formula = No.Cancels ~ appointmentDay_numeric + appointmentMonthYear_numeric + bookedDay_numeric + bookedMonthYear_numeric + daysDiff_AppointBooked, family = binomial(link = "logit"), data = train) -->
+
+<!-- summary(logmodel2) -->
+
+<!-- # exp(coefficients(logmodel2)) -->
+
+<!-- nagelkerke(logmodel2) -->
+
+<!-- # Obtain predicted probabilities: continuous values (not factors) -->
+<!-- predicted2 <- predict(logmodel2, test, type=c("response")) #library(rbenchmark) -->
+<!-- # Convert predicted probabilities to binary predictions -->
+<!-- binary_predicted2 <- ifelse(predicted2 >= 0.5, 1, 0) #threshold=0.5 -->
+<!-- # Create confusion matrix, library(caret) -->
+<!-- confusionMatrix(factor(binary_predicted2), factor(test$No.Cancels)) #test$No.Cancels represents the actual response variable, binary_predictions are the binary predictions based on the threshold -->
+<!-- confusion_matrix(logmodel2) #library(regclass) -->
+<!-- confusion_matrix(logmodel2, test) #library(regclass) -->
+
+<!-- vif(logmodel2) -->
+
+
+<!-- ## with Patient relevance -->
+<!-- logmodel3 <- glm(formula = No.Cancels ~ Gender_numeric + Age.at.Attendance + Area.of.Residence_numeric + addressDiff, family = binomial(link = "logit"), data = train) -->
+
+<!-- summary(logmodel3) -->
+
+<!-- # exp(coefficients(logmodel3)) -->
+
+<!-- nagelkerke(logmodel3) -->
+
+<!-- # Obtain predicted probabilities: continuous values (not factors) -->
+<!-- predicted3 <- predict(logmodel3, test, type=c("response")) #library(rbenchmark) -->
+<!-- # Convert predicted probabilities to binary predictions -->
+<!-- binary_predicted3 <- ifelse(predicted3 >= 0.5, 1, 0) #threshold=0.5 -->
+<!-- # Create confusion matrix, library(caret) -->
+<!-- confusionMatrix(factor(binary_predicted3), factor(test$No.Cancels)) #test$No.Cancels represents the actual response variable, binary_predictions are the binary predictions based on the threshold -->
+<!-- confusion_matrix(logmodel3) #library(regclass) -->
+<!-- confusion_matrix(logmodel3, test) #library(regclass) -->
+
+<!-- vif(logmodel3) -->
+
+
+<!-- ## with all predictors -->
+<!-- logmodel <- glm(formula = No.Cancels ~ Gender_numeric + Age.at.Attendance + Area.of.Residence_numeric + addressDiff + Referral.Source_numeric + Clinic.Type_numeric + Consultant_numeric + Insurance.Scheme_numeric + Eligibility_numeric + Hospital.Catchment_numeric + Booking.Type_numeric + Rebooked.Indicator_numeric + Reason.for.Cancellation_numeric + appointmentDay_numeric + appointmentMonthYear_numeric + bookedDay_numeric + bookedMonthYear_numeric + daysDiff_AppointBooked, family = binomial(link = "logit"), data = train) -->
+
+<!-- summary(logmodel) -->
+
+<!-- exp(coefficients(logmodel)) -->
+
+<!-- nagelkerke(logmodel) -->
+
+<!-- # Obtain predicted probabilities: continuous values (not factors) -->
+<!-- predicted <- predict(logmodel, test, type=c("response")) #library(rbenchmark) -->
+<!-- # Convert predicted probabilities to binary predictions -->
+<!-- binary_predicted <- ifelse(predicted >= 0.5, 1, 0) #threshold=0.5 -->
+<!-- # Create confusion matrix, library(caret) -->
+<!-- confusionMatrix(factor(binary_predicted), factor(test$No.Cancels)) #test$No.Cancels represents the actual response variable, binary_predictions are the binary predictions based on the threshold -->
+<!-- confusion_matrix(logmodel) #library(regclass) -->
+<!-- confusion_matrix(logmodel, test) #library(regclass) -->
+
+<!-- vif(logmodel) -->
+
+<!-- #library(epiDisplay), give plot plus AUC -->
+<!-- logistic.display(logmodel) -->
+<!-- lroc <- lroc(logmodel, title=TRUE, cex.main=1, cex.lab=1, col.lab="blue", cex.axis=1,  -->
+<!-- lwd=3) -->
+<!-- lroc1 <- lroc(logmodel1, add=TRUE, line.col="brown", lty=2) -->
+<!-- lroc2 <- lroc(logmodel2, add=TRUE, line.col="darkgreen", lty=2) -->
+<!-- lroc3 <- lroc(logmodel3, add=TRUE, line.col="purple", lty=2) -->
+<!-- legend("bottomright",legend=c("all predictors", "clinic relevance", "date relevance", "patient relevance"), -->
+<!--         lty=1:2, col=c("red","brown","darkgreen","purple"), bg="white") -->
+<!-- lrtest(logmodel,logmodel1) #library(lmtest) -->
+<!-- lrtest(logmodel,logmodel2) -->
+<!-- lrtest(logmodel,logmodel3) -->
+
+<!-- ``` -->
+<!-- # Comparing factors in models -->
+<!-- ```{r comparing models} -->
+<!-- # anova(logmodel1, logmodel2, logmodel3, logmodel, test="Chisq") #run if there is other ML models -->
+<!-- #library(survey) -->
+<!-- regTermTest(logmodel,"Referral.Source_numeric") -->
+<!-- regTermTest(logmodel,"Clinic.Type_numeric") -->
+<!-- regTermTest(logmodel,"Consultant_numeric") -->
+<!-- regTermTest(logmodel,"Insurance.Scheme_numeric") -->
+<!-- regTermTest(logmodel,"Eligibility_numeric") -->
+<!-- regTermTest(logmodel,"Booking.Type_numeric") -->
+<!-- regTermTest(logmodel,"Hospital.Catchment_numeric") -->
+<!-- regTermTest(logmodel,"appointmentDay_numeric") -->
+<!-- regTermTest(logmodel,"appointmentMonthYear_numeric") -->
+<!-- regTermTest(logmodel,"bookedDay_numeric") -->
+<!-- regTermTest(logmodel,"bookedMonthYear_numeric") -->
+<!-- regTermTest(logmodel,"Gender_numeric") -->
+<!-- # regTermTest(logmodel,"Age.at.Attendance") -->
+<!-- regTermTest(logmodel,"Area.of.Residence_numeric") -->
+<!-- regTermTest(logmodel,"addressDiff") -->
+
+<!-- # Find feature/ variable importance from the model -->
+<!-- varImp(logmodel) #library(caret) -->
+
+<!-- # Report model outcome -->
+<!-- library(report) -->
+<!-- report(logmodel) -->
+<!-- ``` -->
+
+
+<!-- # Decision Tree model -->
+<!-- ## Model of cancellations with predictors -->
+<!-- * strong correlation between (Referral source and Booking type), (Clinic type and Booking type), (Consultant and Appointment day), (Consultant and Clinic code) -->
+
+<!-- ```{r Decision Tree} -->
+<!-- # Create training and test data -->
+
+<!-- ## Define the columns to exclude -->
+<!-- cols_to_exclude <- c("Record.Type","NurseFlag","Medical.Record.Number","Attendance.Day","Attendance.MonthYear","Attendance.Date", "Attendance.Type_recode","Attendance.Year","Attendance.Month","Age.at.Attendance.Cat.HSE","Pathway.Number","Present.Address","Home.Address","Appointment.Date","Referring.Hospital","Booked.Date", "No.Attendances","New.Attendances","Cancellation.Group","Reason.for.Cancellation_recode","No.DNAs","daysDiff_attendanceAppoint","daysDiff_attendanceBooked") -->
+
+<!-- ## Subset the data frame by excluding the specified columns -->
+<!-- main_processed_cancel_dt <- main_processed[, !names(main_processed) %in% cols_to_exclude] -->
+<!-- main_processed_cancel_dt <- subset(main_processed_cancel_dt, is.na(main_processed_cancel_dt$No.Cancels)==F) -->
+
+<!-- sample_dt <- sample(c(TRUE,FALSE), nrow(main_processed_cancel_dt), replace=TRUE, prob=c(0.7,0.3)) -->
+<!-- train_dt <- main_processed_cancel_dt[sample_dt, ] -->
+<!-- test_dt <- main_processed_cancel_dt[!sample_dt, ] -->
+
+<!-- # Train the model -->
+<!-- X <- train_dt[, -which(names(train_dt) == "No.Cancels")] -->
+<!-- y <- train_dt$No.Cancels -->
+
+<!-- # Fit the decision tree model -->
+<!-- cancel_dt <- rpart(y ~ ., data = X, method = "class",cp=0.05) #cp is the complexity parameter, split that not decreasing the overall lack of fit by a factor of cp is pruned, the default value of cp is 0.01 -->
+<!-- summary(cancel_dt) -->
+
+<!-- # Plot the decision tree -->
+<!-- rpart.plot(cancel_dt, extra=104) -->
+<!-- cancel_dt$variable.importance -->
+
+<!-- # Predict the model with actual defaults in test data -->
+<!-- cancel_pred_dt <- predict(cancel_dt, test_dt, type="class") -->
+<!-- print(cancel_pred_dt) -->
+
+<!-- # Evaluate the model -->
+<!-- CrossTable(test_dt$No.Cancels, cancel_pred_dt, -->
+<!--            prop.chisq = FALSE, prob.c = FALSE, prop.r = FALSE, -->
+<!--            dnn = c('actual default','predicted default')) -->
+<!-- table_cancel <- data.frame(value = as.factor(test_dt$No.Cancels), pred = cancel_pred_dt) -->
+<!-- library(yardstick) -->
+<!-- class_metrics <- metric_set(accuracy,precision,recall) #metric_set is function of library(yardstick) -->
+<!-- class_metrics(table_cancel, truth = value, estimate = pred) -->
+
+<!-- ``` -->
+
+# Build baseline model of new attendances with predictors
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
