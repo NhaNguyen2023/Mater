@@ -133,9 +133,9 @@ df5_cpt <- read_excel(file_path5_cpt, sheet = sheet_name5_cpt)
 df_list_cpt <- list(df1_cpt, df2_cpt, df3_cpt, df4_cpt, df5_cpt)
 main_cpt <- df_list_cpt %>% reduce(full_join)
 
-
-# main <- subset(main, year(main$`Order Date`) < 2024)
-
+main_schd <- subset(main_schd, year(main_schd$`Order Date`) < 2024)
+main_cpt <- subset(main_cpt, year(main_cpt$`Order Date`) < 2024)
+main_cpt <- subset(main_cpt, year(main_cpt$`Completed Date`) < 2024)
 
 ## View variable types
 main_schd %>% glimpse() #glimpse from library(dplyr)
@@ -211,21 +211,59 @@ summary(main_all$`Order to now (days) Min`)
 # ))
 
 ### Date description
-main_all$orderDate <- as.Date(main_all$`Order Date`, format="%d/%m/%Y")
-main_all$orderDay <- weekdays(main_all$orderDate)
-main_all$orderMonth <- format(as.Date(main_all$orderDate, format="%Y/%m/%d"),"%m")
-main_all$orderYear <- format(as.Date(main_all$orderDate, format="%Y/%m/%d"),"%Y")
+main_all$`Order Date` <- as.Date(main_all$`Order Date`, format="%d/%m/%Y")
+main_all$orderDay <- weekdays(main_all$`Order Date`)
+main_all$orderMonth <- format(as.Date(main_all$`Order Date`, format="%Y/%m/%d"),"%m")
+main_all$orderYear <- format(as.Date(main_all$`Order Date`, format="%Y/%m/%d"),"%Y")
 library(zoo)
-main_all$orderMonthYear <- as.yearmon(paste(year(main_all$orderDate), month(main_all$orderDate)), "%Y %m") #change date from char format to numeric by using library(zoo)
+main_all$orderMonthYear <- as.yearmon(paste(year(main_all$`Order Date`), month(main_all$`Order Date`)), "%Y %m") #change date from char format to numeric by using library(zoo)
 
-main_all$schdDate <- as.Date(main_all$`Schedule Date`, format="%d/%m/%Y")
-main_all$schdDay <- weekdays(main_all$schdDate)
-main_all$schdMonth <- format(as.Date(main_all$schdDate, format="%Y/%m/%d"),"%m")
-main_all$schdYear <- format(as.Date(main_all$schdDate, format="%Y/%m/%d"),"%Y")
-main_all$schdMonthYear <- as.yearmon(paste(year(main_all$schdDate), month(main_all$schdDate)), "%Y %m") #change date from char format to numeric by using library(zoo)
+main_all$`Schedule Date` <- as.Date(main_all$`Schedule Date`, format="%d/%m/%Y")
+main_all$schdDay <- weekdays(main_all$`Schedule Date`)
+main_all$schdMonth <- format(as.Date(main_all$`Schedule Date`, format="%Y/%m/%d"),"%m")
+main_all$schdYear <- format(as.Date(main_all$`Schedule Date`, format="%Y/%m/%d"),"%Y")
+main_all$schdMonthYear <- as.yearmon(paste(year(main_all$`Schedule Date`), month(main_all$`Schedule Date`)), "%Y %m") #change date from char format to numeric by using library(zoo)
 main_all$schdTime <- ifelse(!main_all$`Schedule Time`==":", ifelse(substring(main_all$`Schedule Time`,0,2) <13, "am","pm"),main_all$`Schedule Time`)
 
-main_all$daysDiff_orderSchd <- difftime(main_all$orderDate,main_all$schdDate,units="days")
+main_all$daysDiff_orderSchd <- difftime(main_all$`Order Date`,main_all$`Schedule Date`,units="days")
+
+
+main_schd$`Order Date` <- as.Date(main_schd$`Order Date`, format="%Y/%m/%d")
+main_schd$orderDay <- weekdays(main_schd$`Order Date`)
+main_schd$orderMonth <- format(as.Date(main_schd$`Order Date`, format="%Y/%m/%d"),"%m")
+main_schd$orderYear <- format(as.Date(main_schd$`Order Date`, format="%Y/%m/%d"),"%Y")
+main_schd$orderMonthYear <- as.yearmon(paste(year(main_schd$`Order Date`), month(main_schd$`Order Date`)), "%Y %m") #change date from char format to numeric by using library(zoo)
+
+main_schd$`Schedule Date` <- as.Date(main_schd$`Schedule Date`, format="%Y/%m/%d")
+main_schd$schdDay <- weekdays(main_schd$`Schedule Date`)
+main_schd$schdMonth <- format(as.Date(main_schd$`Schedule Date`, format="%Y/%m/%d"),"%m")
+main_schd$schdYear <- format(as.Date(main_schd$`Schedule Date`, format="%Y/%m/%d"),"%Y")
+main_schd$schdMonthYear <- as.yearmon(paste(year(main_schd$`Schedule Date`), month(main_schd$`Schedule Date`)), "%Y %m") #change date from char format to numeric by using library(zoo)
+
+main_schd$daysDiff_orderSchd <- difftime(main_schd$`Order Date`,main_schd$`Schedule Date`,units="days")
+
+
+main_cpt$`Order Date` <- as.Date(main_cpt$`Order Date`, format="%Y/%m/%d")
+main_cpt$orderDay <- weekdays(main_cpt$`Order Date`)
+main_cpt$orderMonth <- format(as.Date(main_cpt$`Order Date`, format="%Y/%m/%d"),"%m")
+main_cpt$orderYear <- format(as.Date(main_cpt$`Order Date`, format="%Y/%m/%d"),"%Y")
+main_cpt$orderMonthYear <- as.yearmon(paste(year(main_cpt$`Order Date`), month(main_cpt$`Order Date`)), "%Y %m") #change date from char format to numeric by using library(zoo)
+
+main_cpt$`Completed Date` <- as.Date(main_cpt$`Completed Date`, format="%Y/%m/%d")
+main_cpt$cptDay <- weekdays(main_cpt$`Completed Date`)
+main_cpt$cptMonth <- format(as.Date(main_cpt$`Completed Date`, format="%Y/%m/%d"),"%m")
+main_cpt$cptYear <- format(as.Date(main_cpt$`Completed Date`, format="%Y/%m/%d"),"%Y")
+main_cpt$cptMonthYear <- as.yearmon(paste(year(main_cpt$`Completed Date`), month(main_cpt$`Completed Date`)), "%Y %m") #change date from char format to numeric by using library(zoo)
+
+main_cpt$`Result Date` <- as.Date(main_cpt$`Result Date`, format="%Y/%m/%d")
+main_cpt$rstDay <- weekdays(main_cpt$`Result Date`)
+main_cpt$rstMonth <- format(as.Date(main_cpt$`Result Date`, format="%Y/%m/%d"),"%m")
+main_cpt$rstYear <- format(as.Date(main_cpt$`Result Date`, format="%Y/%m/%d"),"%Y")
+main_cpt$rstMonthYear <- as.yearmon(paste(year(main_cpt$`Result Date`), month(main_cpt$`Result Date`)), "%Y %m")
+
+main_cpt$daysDiff_orderCpt <- difftime(main_cpt$`Order Date`,main_cpt$`Completed Date`,units="days")
+main_cpt$daysDiff_cptRst <- difftime(main_cpt$`Completed Date`,main_cpt$`Result Date`,units="days")
+main_cpt$daysDiff_orderRst <- difftime(main_cpt$`Order Date`,main_cpt$`Result Date`,units="days")
 
 # Scheduled orders
 ## Variables description
@@ -277,7 +315,7 @@ main_schd <- main_schd %>%     #library(plyr)
   substring(main_schd$`Order Description`,0,2) %in% rad_1_gi ~ "G.I. Investigation",
   substring(main_schd$`Order Description`,0,2) %in% rad_3_mammo ~ "Mammograms", 
   substring(main_schd$`Order Description`,0) %in% rad_3_mammo_us ~ "Mammograms", #substring has a default value for the last option: last = 1000000L. If we don’t specify last, this value is used
-  substring(main_schd$`Order Description`,0,2) %in% rad_4_us & !substring(main$`Order Description`,0) %in% rad_4_us_excl ~ "Ultrasound",
+  substring(main_schd$`Order Description`,0,2) %in% rad_4_us & !substring(main_schd$`Order Description`,0) %in% rad_4_us_excl ~ "Ultrasound",
   substring(main_schd$`Order Description`,0,2) %in% rad_5_ct ~ "CT",
   substring(main_schd$`Order Description`,0,2) %in% rad_6_nucd ~ "Radionuclide",
   substring(main_schd$`Order Description`,0,2) %in% rad_7_cardio ~ "Cadiovascular",
@@ -293,27 +331,30 @@ main_schd <- main_schd %>%     #library(plyr)
   TRUE ~ "CTC" #rad_ctc substring doesnt work for spaces btw letters
 ))
 
+main_cpt <- main_cpt %>%     #library(plyr)
+ mutate(orderDes = case_when(
+  substring(main_cpt$`Order Description`,0,2) %in% rad_0_gen ~ "Radiology General",
+  substring(main_cpt$`Order Description`,0,2) %in% rad_1_gi ~ "G.I. Investigation",
+  substring(main_cpt$`Order Description`,0,2) %in% rad_3_mammo ~ "Mammograms", 
+  substring(main_cpt$`Order Description`,0) %in% rad_3_mammo_us ~ "Mammograms", #substring has a default value for the last option: last = 1000000L. If we don’t specify last, this value is used
+  substring(main_cpt$`Order Description`,0,2) %in% rad_4_us & !substring(main_cpt$`Order Description`,0) %in% rad_4_us_excl ~ "Ultrasound",
+  substring(main_cpt$`Order Description`,0,2) %in% rad_5_ct ~ "CT",
+  substring(main_cpt$`Order Description`,0,2) %in% rad_6_nucd ~ "Radionuclide",
+  substring(main_cpt$`Order Description`,0,2) %in% rad_7_cardio ~ "Cadiovascular",
+  substring(main_cpt$`Order Description`,0) %in% rad_7_cardio_other ~ "Cadiovascular",
+  substring(main_cpt$`Order Description`,0,2) %in% rad_9_ir ~ "Interventional Rad",
+  substring(main_cpt$`Order Description`,0) %in% rad_9_ir_other ~ "Interventional Rad",
+  substring(main_cpt$`Order Description`,0,3) %in% rad_d_scan ~ "Dexa Scanning",
+  substring(main_cpt$`Order Description`,0,2) %in% rad_img ~ "Image Mgmt",
+  substring(main_cpt$`Order Description`,0,3) %in% rad_m_mri ~ "M.R.I.",
+  substring(main_cpt$`Order Description`,0,3) %in% rad_mdm ~ "MDM",
+  substring(main_cpt$`Order Description`,0,3) %in% rad_p_pet ~ "PET-CT",
+  substring(main_cpt$`Order Description`,0,2) %in% rad_t_th ~ "Theatre Rad",
+  TRUE ~ "CTC" #rad_ctc substring doesnt work for spaces btw letters
+))
+
 #### Order Status with 112 values
 sort(table(main_schd$`Order Status`),decreasing = T)
-
-
-
-### Date description
-main_schd$orderDate <- as.Date(main_schd$`Order Date`, format="%d/%m/%y")
-main_schd$orderDay <- weekdays(main_schd$orderDate)
-main_schd$orderMonth <- format(as.Date(main_schd$orderDate, format="%d/%m/%Y"),"%m")
-main_schd$orderYear <- format(as.Date(main_schd$orderDate, format="%d/%m/%Y"),"%y")
-library(zoo)
-main_schd$orderMonthYear <- as.yearmon(paste(year(main_schd$orderDate), month(main_schd$orderDate)), "%Y %m") #change date from char format to numeric by using library(zoo)
-
-main_schd$schdDate <- as.Date(main_schd$`Schedule Date`, format="%d/%m/%y")
-main_schd$schdDay <- weekdays(main_schd$schdDate)
-main_schd$schdMonth <- format(as.Date(main_schd$schdDate, format="%d/%m/%Y"),"%m")
-main_schd$schdYear <- format(as.Date(main_schd$schdDate, format="%d/%m/%Y"),"%y")
-library(zoo)
-main_schd$schdMonthYear <- as.yearmon(paste(year(main_schd$schdDate), month(main_schd$schdDate)), "%Y %m") #change date from char format to numeric by using library(zoo)
-
-main_schd$daysDiff_orderSchd <- difftime(main_schd$orderDate,main_schd$schdDate,units="days")
 
 
 ### Order description
@@ -570,94 +611,350 @@ ggplot(pt_MRN, aes(x = orderYear, y = freq, fill = status)) +
   theme(text=element_text(size=8), axis.title = element_text(size=10))
 
 ## Create pareto charts
-gg_subDep <- ggplot(main_all,aes(x=main_all$`Sub Department`)) + 
+library(patchwork)
+plot_subDep_all <- ggplot(main_all,aes(x=main_all$`Sub Department`)) + 
   labs(x = "Radiology type 2020-2023") +
   scale_x_discrete(limits=c("0 : RADIOLOGY GENERAL","3 : MAMMOGRAMS","1 : G.I. INVESTIGATIONS"), guide = guide_axis(n.dodge = 2)) +
   geom_bar(colour="blue", fill="lightblue") +
   geom_text(aes(y = ..count.., label = ..count..), stat="count", vjust=.3, size=3.5) +
   theme_minimal()
-gg_subDep
-
+plot_subDep_all
 
 specialty <- data.frame(table(main_all$`Ordering Specialty Description`))
 colnames(specialty) <- c("specialty", "freq")
-ggplot(specialty, aes(x=specialty, y=freq)) +
+plot_specialty <- ggplot(specialty, aes(x=specialty, y=freq)) +
   stat_pareto(point.color = "red", line.color = "darkblue", bars.fill = c("blue","lightblue")) +
   labs(x = "Specialty", y= "Frequency") +
-  theme(axis.text = element_text(angle=90, hjust=1, vjust=.5))
-  
-locationGrp <- data.frame(table(main_all$`Order Location Group`))
-colnames(specialty) <- c("locationGrp", "freq")
-ggplot(locationGrp, aes(x=locationGrp, y=freq)) +
-  stat_pareto(point.color = "red", line.color = "darkblue", bars.fill = c("blue","lightblue")) +
-  labs(x = "Ordering Location Group", y= "Frequency") +
-  theme(axis.text = element_text(angle=90, hjust=1, vjust=.5))
-
-episodeType <- data.frame(table(main_all$`Episode Type`))
-colnames(episodeType) <- c("episodeType", "freq")
-ggplot(episodeType, aes(x=episodeType, y=freq)) +
-  stat_pareto(point.color = "red", line.color = "darkblue", bars.fill = c("blue","lightblue")) +
-  labs(x = "Episode Type", y= "Frequency") +
   theme(axis.text = element_text(angle=90, hjust=1, vjust=.5))
 
 insScheme <- data.frame(table(main_all$`Insurance Scheme`))
 colnames(insScheme) <- c("insScheme", "freq")
-ggplot(insScheme, aes(x=insScheme, y=freq)) +
+plot_insScheme <- ggplot(insScheme, aes(x=insScheme, y=freq)) +
   stat_pareto(point.color = "red", line.color = "darkblue", bars.fill = c("blue","lightblue")) +
   labs(x = "Insurance Scheme", y= "Frequency") +
   theme(axis.text = element_text(angle=90, hjust=1, vjust=.5))
 
 itemPrior <- data.frame(table(main_all$`Item Priority`))
 colnames(itemPrior) <- c("itemPrior", "freq")
-ggplot(itemPrior, aes(x=itemPrior, y=freq)) +
+plot_itemPrior <- ggplot(itemPrior, aes(x=itemPrior, y=freq)) +
   stat_pareto(point.color = "red", line.color = "darkblue", bars.fill = c("blue","lightblue")) +
   labs(x = "Item Priority", y= "Frequency") +
   theme(axis.text = element_text(angle=90, hjust=1, vjust=.5))
 
-orderDay <- data.frame(table(main_all$orderDay))
-colnames(orderDay) <- c("orderDay", "freq")
-ggplot(orderDay, aes(x=orderDay, y=freq)) +
-  stat_pareto(point.color = "red", line.color = "darkgreen", bars.fill = c("green","lightgreen")) +
-  labs(x = "Order Day", y= "Frequency") +
+medCard <- data.frame(table(main_all$`Medical Card Holder`))
+colnames(medCard) <- c("medCard", "freq")
+plot_medCard <- ggplot(medCard, aes(x=medCard, y=freq)) +
+  stat_pareto(point.color = "red", line.color = "darkblue", bars.fill = c("blue","lightblue")) +
+  labs(x = "Medical Card Holder", y= "Frequency") +
   theme(axis.text = element_text(angle=90, hjust=1, vjust=.5))
 
-orderMonth <- data.frame(table(main_all$orderMonth))
-colnames(orderMonth) <- c("orderMonth", "freq")
-ggplot(orderMonth, aes(x=orderMonth, y=freq)) +
-  stat_pareto(point.color = "red", line.color = "darkgreen", bars.fill = c("green","lightgreen")) +
-  labs(x = "Order Month", y= "Frequency") +
+prvtInd <- data.frame(table(main_all$`Private Indicator`))
+colnames(prvtInd) <- c("privateIndicator", "freq")
+plot_prvtInd <- ggplot(prvtInd, aes(x=privateIndicator, y=freq)) +
+  stat_pareto(point.color = "red", line.color = "darkblue", bars.fill = c("blue","lightblue")) +
+  labs(x = "Private Indicator", y= "Frequency") +
   theme(axis.text = element_text(angle=90, hjust=1, vjust=.5))
 
-schdDay <- data.frame(table(main_all$schdDay))
-colnames(schdDay) <- c("schdDay", "freq")
-ggplot(schdDay, aes(x=schdDay, y=freq)) +
-  stat_pareto(point.color = "red", line.color = "darkgreen", bars.fill = c("green","lightgreen")) +
-  labs(x = "Scheduled Day", y= "Frequency") +
+futBre <- data.frame(table(main_all$`Future Breach`))
+colnames(futBre) <- c("futureBreach", "freq")
+plot_futBre <- ggplot(futBre, aes(x=futureBreach, y=freq)) +
+  stat_pareto(point.color = "red", line.color = "darkblue", bars.fill = c("blue","lightblue")) +
+  labs(x = "Future Breach", y= "Frequency") +
   theme(axis.text = element_text(angle=90, hjust=1, vjust=.5))
 
-schdMonth <- data.frame(table(main_all$schdMonth))
-colnames(schdMonth) <- c("schdMonth", "freq")
-ggplot(schdMonth, aes(x=schdMonth, y=freq)) +
-  stat_pareto(point.color = "red", line.color = "darkgreen", bars.fill = c("green","lightgreen")) +
-  labs(x = "Scheduled Month", y= "Frequency") +
+plot_specialty | plot_insScheme
+plot_itemPrior | plot_medCard / plot_prvtInd | plot_futBre
+
+
+orderDes_all <- data.frame(table(main_all$`Sub Department`))
+colnames(orderDes_all) <- c("orderDes", "freq")
+plot_orderDes_all <- ggplot(orderDes_all, aes(x=orderDes, y=freq)) +
+  stat_pareto(point.color = "red", line.color = "darkblue", bars.fill = c("blue","lightblue")) +
+  labs(x = "Order Type in All orders", y= "Frequency") +
   theme(axis.text = element_text(angle=90, hjust=1, vjust=.5))
 
-# pie(main_processed$New.Attendances, labels = names(main_processed$New.Attendances), clockwise = T, na.omit=T)
+orderDes_schd <- data.frame(table(main_schd$orderDes))
+colnames(orderDes_schd) <- c("orderDes", "freq")
+plot_orderDes_schd <- ggplot(orderDes_schd, aes(x=orderDes, y=freq)) +
+  stat_pareto(point.color = "red", line.color = "darkblue", bars.fill = c("blue","lightblue")) +
+  labs(x = "Order Type in Scheduled orders", y= "Frequency") +
+  theme(axis.text = element_text(angle=90, hjust=1, vjust=.5))
 
+orderDes_cpt <- data.frame(table(main_cpt$orderDes))
+colnames(orderDes_cpt) <- c("orderDes", "freq")
+plot_orderDes_cpt <- ggplot(orderDes_cpt, aes(x=orderDes, y=freq)) +
+  stat_pareto(point.color = "red", line.color = "darkblue", bars.fill = c("blue","lightblue")) +
+  labs(x = "Order Type in Completed orders", y= "Frequency") +
+  theme(axis.text = element_text(angle=90, hjust=1, vjust=.5))
+
+plot_orderDes_all + plot_orderDes_schd + plot_orderDes_cpt
+
+
+locationGrp_all <- data.frame(table(main_all$`Order Location Group`))
+colnames(locationGrp_all) <- c("locationGrp", "freq")
+plot_locationGrp_all <- ggplot(locationGrp_all, aes(x=locationGrp, y=freq)) +
+  stat_pareto(point.color = "red", line.color = "darkblue", bars.fill = c("blue","lightblue")) +
+  labs(x = "Order Location Group in All orders", y= "Frequency") +
+  theme(axis.text = element_text(angle=90, hjust=1, vjust=.5))
+
+locationGrp_cpt <- data.frame(table(main_cpt$`Ordering Location Group`))
+colnames(locationGrp_cpt) <- c("locationGrp", "freq")
+plot_locationGrp_cpt <- ggplot(locationGrp_cpt, aes(x=locationGrp, y=freq)) +
+  stat_pareto(point.color = "red", line.color = "darkblue", bars.fill = c("blue","lightblue")) +
+  labs(x = "Ordering Location Group in Completed orders", y= "Frequency") +
+  theme(axis.text = element_text(angle=90, hjust=1, vjust=.5))
+
+plot_locationGrp_all| plot_locationGrp_cpt
+
+
+episodeType_all <- data.frame(table(main_all$`Episode Type`))
+colnames(episodeType_all) <- c("episodeType", "freq")
+plot_episodeType_all <- ggplot(episodeType_all, aes(x=episodeType, y=freq)) +
+  stat_pareto(point.color = "red", line.color = "darkblue", bars.fill = c("blue","lightblue")) +
+  labs(x = "Episode Type in All orders", y= "Frequency") +
+  theme(axis.text = element_text(angle=90, hjust=1, vjust=.5))
+
+episodeType_schd <- data.frame(table(main_schd$`Episode Type`))
+colnames(episodeType_schd) <- c("episodeType", "freq")
+plot_episodeType_schd <- ggplot(episodeType_schd, aes(x=episodeType, y=freq)) +
+  stat_pareto(point.color = "red", line.color = "darkblue", bars.fill = c("blue","lightblue")) +
+  labs(x = "Episode Type in Scheduled orders", y= "Frequency") +
+  theme(axis.text = element_text(angle=90, hjust=1, vjust=.5))
+
+episodeType_cpt <- data.frame(table(main_cpt$`Episode Type`))
+colnames(episodeType_cpt) <- c("episodeType", "freq")
+plot_episodeType_cpt <- ggplot(episodeType_cpt, aes(x=episodeType, y=freq)) +
+  stat_pareto(point.color = "red", line.color = "darkblue", bars.fill = c("blue","lightblue")) +
+  labs(x = "Episode Type in Completed orders", y= "Frequency") +
+  theme(axis.text = element_text(angle=90, hjust=1, vjust=.5))
+
+plot_episodeType_all+ plot_episodeType_schd+ plot_episodeType_cpt
+
+
+numOrder_all <- data.frame(table(main_all$`No Order Items`))
+colnames(numOrder_all) <- c("numOrder", "freq")
+plot_numOrder_all <- ggplot(numOrder_all, aes(x=numOrder, y=freq)) +
+  stat_pareto(point.color = "red", line.color = "darkblue", bars.fill = c("blue","lightblue")) +
+  labs(x = "Number of Order items in All orders", y= "Frequency") +
+  theme(axis.text = element_text(angle=90, hjust=1, vjust=.5))
+
+numOrder_schd <- data.frame(table(main_schd$`No Order Items`))
+colnames(numOrder_schd) <- c("numOrder", "freq")
+plot_numOrder_schd <- ggplot(numOrder_schd, aes(x=numOrder, y=freq)) +
+  stat_pareto(point.color = "red", line.color = "darkblue", bars.fill = c("blue","lightblue")) +
+  labs(x = "Number of Order items in Scheduled orders", y= "Frequency") +
+  theme(axis.text = element_text(angle=90, hjust=1, vjust=.5))
+
+numOrder_cpt <- data.frame(table(main_cpt$`No Orders`))
+colnames(numOrder_cpt) <- c("numOrder", "freq")
+plot_numOrder_cpt <- ggplot(numOrder_cpt, aes(x=numOrder, y=freq)) +
+  stat_pareto(point.color = "red", line.color = "darkblue", bars.fill = c("blue","lightblue")) +
+  labs(x = "Number of Order items in Completed orders", y= "Frequency") +
+  theme(axis.text = element_text(angle=90, hjust=1, vjust=.5))
+
+plot_numOrder_all+ plot_numOrder_schd+ plot_numOrder_cpt
+
+
+orderDay_all <- data.frame(table(main_all$orderDay))
+colnames(orderDay_all) <- c("orderDay", "freq")
+plot_orderDay_all <- ggplot(orderDay_all, aes(x=orderDay, y=freq)) +
+  stat_pareto(point.color = "red", line.color = "darkblue", bars.fill = c("yellow","lightyellow")) +
+  labs(x = "Order Day in All orders", y= "Frequency") +
+  theme(axis.text = element_text(angle=90, hjust=1, vjust=.5))
+
+orderDay_schd <- data.frame(table(main_schd$orderDay))
+colnames(orderDay_schd) <- c("orderDay", "freq")
+plot_orderDay_schd <- ggplot(orderDay_schd, aes(x=orderDay, y=freq)) +
+  stat_pareto(point.color = "red", line.color = "darkblue", bars.fill = c("yellow","lightyellow")) +
+  labs(x = "Order Day in Scheduled orders", y= "Frequency") +
+  theme(axis.text = element_text(angle=90, hjust=1, vjust=.5))
+
+orderDay_cpt <- data.frame(table(main_cpt$orderDay))
+colnames(orderDay_cpt) <- c("orderDay", "freq")
+plot_orderDay_cpt <- ggplot(orderDay_cpt, aes(x=orderDay, y=freq)) +
+  stat_pareto(point.color = "red", line.color = "darkblue", bars.fill = c("yellow","lightyellow")) +
+  labs(x = "Order Day in Completed orders", y= "Frequency") +
+  theme(axis.text = element_text(angle=90, hjust=1, vjust=.5))
+
+plot_orderDay_all+ plot_orderDay_schd+ plot_orderDay_cpt
+
+orderMonth_all <- data.frame(table(main_all$orderMonth))
+colnames(orderMonth_all) <- c("orderMonth", "freq")
+plot_orderMonth_all <- ggplot(orderMonth_all, aes(x=orderMonth, y=freq)) +
+  stat_pareto(point.color = "red", line.color = "darkblue", bars.fill = c("yellow","lightyellow")) +
+  labs(x = "Order Month in All orders", y= "Frequency") +
+  theme(axis.text = element_text(angle=90, hjust=1, vjust=.5))
+
+orderMonth_schd <- data.frame(table(main_schd$orderMonth))
+colnames(orderMonth_schd) <- c("orderMonth", "freq")
+plot_orderMonth_schd <- ggplot(orderMonth_schd, aes(x=orderMonth, y=freq)) +
+  stat_pareto(point.color = "red", line.color = "darkblue", bars.fill = c("yellow","lightyellow")) +
+  labs(x = "Order Month in Scheduled orders", y= "Frequency") +
+  theme(axis.text = element_text(angle=90, hjust=1, vjust=.5))
+
+orderMonth_cpt <- data.frame(table(main_cpt$orderMonth))
+colnames(orderMonth_cpt) <- c("orderMonth", "freq")
+plot_orderMonth_cpt <- ggplot(orderMonth_cpt, aes(x=orderMonth, y=freq)) +
+  stat_pareto(point.color = "red", line.color = "darkblue", bars.fill = c("yellow","lightyellow")) +
+  labs(x = "Order Month in Completed orders", y= "Frequency") +
+  theme(axis.text = element_text(angle=90, hjust=1, vjust=.5))
+
+plot_orderMonth_all+ plot_orderMonth_schd+ plot_orderMonth_cpt
+
+
+schdDay_all <- data.frame(table(main_all$schdDay))
+colnames(schdDay_all) <- c("schdDay", "freq")
+plot_schdDay_all <- ggplot(schdDay_all, aes(x=schdDay, y=freq)) +
+  stat_pareto(point.color = "red", line.color = "darkgreen", bars.fill = c("green","lightgreen")) +
+  labs(x = "Scheduled Day in All orders", y= "Frequency") +
+  theme(axis.text = element_text(angle=90, hjust=1, vjust=.5))
+
+schdDay_schd <- data.frame(table(main_schd$schdDay))
+colnames(schdDay_schd) <- c("schdDay", "freq")
+plot_schdDay_schd <- ggplot(schdDay_schd, aes(x=schdDay, y=freq)) +
+  stat_pareto(point.color = "red", line.color = "darkgreen", bars.fill = c("green","lightgreen")) +
+  labs(x = "Scheduled Day in Scheduled orders", y= "Frequency") +
+  theme(axis.text = element_text(angle=90, hjust=1, vjust=.5))
+
+schdDay_cpt <- data.frame(table(main_cpt$cptDay))
+colnames(schdDay_cpt) <- c("cptDay", "freq")
+plot_schdDay_cpt <- ggplot(schdDay_cpt, aes(x=cptDay, y=freq)) +
+  stat_pareto(point.color = "red", line.color = "darkgreen", bars.fill = c("green","lightgreen")) +
+  labs(x = "Completed Day in Completed orders", y= "Frequency") +
+  theme(axis.text = element_text(angle=90, hjust=1, vjust=.5))
+
+rstDay_cpt <- data.frame(table(main_cpt$rstDay))
+colnames(rstDay_cpt) <- c("rstDay", "freq")
+plot_rstDay_cpt <- ggplot(rstDay_cpt, aes(x=rstDay, y=freq)) +
+  stat_pareto(point.color = "red", line.color = "darkgreen", bars.fill = c("green","lightgreen")) +
+  labs(x = "Result Day in Completed orders", y= "Frequency") +
+  theme(axis.text = element_text(angle=90, hjust=1, vjust=.5))
+
+plot_schdDay_all+ plot_schdDay_schd+ plot_schdDay_cpt+ plot_rstDay_cpt
+
+
+schdMonth_all <- data.frame(table(main_all$schdMonth))
+colnames(schdMonth_all) <- c("schdMonth", "freq")
+plot_schdMonth_all <- ggplot(schdMonth_all, aes(x=schdMonth, y=freq)) +
+  stat_pareto(point.color = "red", line.color = "darkgreen", bars.fill = c("green","lightgreen")) +
+  labs(x = "Scheduled Month in All orders", y= "Frequency") +
+  theme(axis.text = element_text(angle=90, hjust=1, vjust=.5))
+
+schdMonth_schd <- data.frame(table(main_schd$schdMonth))
+colnames(schdMonth_schd) <- c("schdMonth", "freq")
+plot_schdMonth_schd <- ggplot(schdMonth_schd, aes(x=schdMonth, y=freq)) +
+  stat_pareto(point.color = "red", line.color = "darkgreen", bars.fill = c("green","lightgreen")) +
+  labs(x = "Scheduled Month in Scheduled orders", y= "Frequency") +
+  theme(axis.text = element_text(angle=90, hjust=1, vjust=.5))
+
+schdMonth_cpt <- data.frame(table(main_cpt$cptMonth))
+colnames(schdMonth_cpt) <- c("cptMonth", "freq")
+plot_schdMonth_cpt <- ggplot(schdMonth_cpt, aes(x=cptMonth, y=freq)) +
+  stat_pareto(point.color = "red", line.color = "darkgreen", bars.fill = c("green","lightgreen")) +
+  labs(x = "Completed Month in Completed orders", y= "Frequency") +
+  theme(axis.text = element_text(angle=90, hjust=1, vjust=.5))
+
+rstMonth_cpt <- data.frame(table(main_cpt$rstMonth))
+colnames(rstMonth_cpt) <- c("rstMonth", "freq")
+plot_rstMonth_cpt <- ggplot(rstMonth_cpt, aes(x=rstMonth, y=freq)) +
+  stat_pareto(point.color = "red", line.color = "darkgreen", bars.fill = c("green","lightgreen")) +
+  labs(x = "Result Month in Completed orders", y= "Frequency") +
+  theme(axis.text = element_text(angle=90, hjust=1, vjust=.5))
+
+plot_schdMonth_all+ plot_schdMonth_schd+ plot_schdMonth_cpt+ plot_rstMonth_cpt
+
+
+## Two variables
+orderMonthYear_all <- data.frame(table(factor(main_all$orderMonth), factor(main_all$orderYear)))
+colnames(orderMonthYear_all) <- c("month","year","freq")
+plot_orderMonthYear_all <- ggplot(orderMonthYear_all, aes(x = factor(month), y = freq, color = year, group = year)) +
+  geom_point(size = 3) +
+  geom_line(aes(linetype = year)) +
+  labs(title = "All orders", subtitle = "Episode counts of Order month over years", 
+    x = "Order Month", y = "Episode Count", color = "Year") +
+  scale_y_continuous(labels = scales::number) +
+  theme(text=element_text(size=8), axis.title = element_text(size=10), axis.text.x = element_text(angle = 90, vjust = .5))
+
+orderMonthYear_schd <- data.frame(table(factor(main_schd$orderMonth), factor(main_schd$orderYear)))
+colnames(orderMonthYear_schd) <- c("month","year","freq")
+plot_orderMonthYear_schd <- ggplot(orderMonthYear_schd, aes(x = factor(month), y = freq, color = year, group = year)) +
+  geom_point(size = 3) +
+  geom_line(aes(linetype = year)) +
+  labs(title = "Scheduled orders", subtitle = "Episode counts of Order month over years",
+    x = "Order Month", y = "Episode Count", color = "Year") +
+  scale_y_continuous(labels = scales::number) +
+  theme(text=element_text(size=8), axis.title = element_text(size=10), axis.text.x = element_text(angle = 90, vjust = .5))
+
+orderMonthYear_cpt <- data.frame(table(factor(main_cpt$orderMonth), factor(main_cpt$orderYear)))
+colnames(orderMonthYear_cpt) <- c("month","year","freq")
+plot_orderMonthYear_cpt <- ggplot(orderMonthYear_cpt, aes(x = factor(month), y = freq, color = year, group = year)) +
+  geom_point(size = 3) +
+  geom_line(aes(linetype = year)) +
+  labs(title = "Completed orders", subtitle = "Episode counts of Order month over years",
+    x = "Order Month", y = "Episode Count", color = "Year") +
+  scale_y_continuous(labels = scales::number) +
+  theme(text=element_text(size=8), axis.title = element_text(size=10), axis.text.x = element_text(angle = 90, vjust = .5))
+
+plot_orderMonthYear_all + plot_orderMonthYear_schd + plot_orderMonthYear_cpt
+
+
+schdMonthYear_all <- data.frame(table(factor(main_all$schdMonth), factor(main_all$schdYear)))
+colnames(schdMonthYear_all) <- c("month","year","freq")
+plot_schdMonthYear_all <- ggplot(schdMonthYear_all, aes(x = factor(month), y = freq, color = year, group = year)) +
+  geom_point(size = 3) +
+  geom_line(aes(linetype = year)) +
+  labs(title = "All orders", subtitle = "Episode counts of Scheduled month over years", 
+    x = "Scheduled Month", y = "Episode Count", color = "Year") +
+  scale_y_continuous(labels = scales::number) +
+  theme(text=element_text(size=8), axis.title = element_text(size=10), axis.text.x = element_text(angle = 90, vjust = .5))
+
+schdMonthYear_schd <- data.frame(table(factor(main_schd$orderMonth), factor(main_schd$orderYear)))
+colnames(schdMonthYear_schd) <- c("month","year","freq")
+plot_schdMonthYear_schd <- ggplot(schdMonthYear_schd, aes(x = factor(month), y = freq, color = year, group = year)) +
+  geom_point(size = 3) +
+  geom_line(aes(linetype = year)) +
+  labs(title = "Scheduled orders", subtitle = "Episode counts of Scheduled month over years",
+    x = "Scheduled Month", y = "Episode Count", color = "Year") +
+  scale_y_continuous(labels = scales::number) +
+  theme(text=element_text(size=8), axis.title = element_text(size=10), axis.text.x = element_text(angle = 90, vjust = .5))
+
+schdMonthYear_cpt <- data.frame(table(factor(main_cpt$cptMonth), factor(main_cpt$cptYear)))
+colnames(schdMonthYear_cpt) <- c("month","year","freq")
+plot_schdMonthYear_cpt <- ggplot(schdMonthYear_cpt, aes(x = factor(month), y = freq, color = year, group = year)) +
+  geom_point(size = 3) +
+  geom_line(aes(linetype = year)) +
+  labs(title = "Completed orders", subtitle = "Episode counts of Completed month over years",
+    x = "Completed Month", y = "Episode Count", color = "Year") +
+  scale_y_continuous(labels = scales::number) +
+  theme(text=element_text(size=8), axis.title = element_text(size=10), axis.text.x = element_text(angle = 90, vjust = .5))
+
+rstMonthYear_cpt <- data.frame(table(factor(main_cpt$rstMonth), factor(main_cpt$rstYear)))
+colnames(rstMonthYear_cpt) <- c("month","year","freq")
+plot_rstMonthYear_cpt <- ggplot(rstMonthYear_cpt, aes(x = factor(month), y = freq, color = year, group = year)) +
+  geom_point(size = 3) +
+  geom_line(aes(linetype = year)) +
+  labs(title = "Completed orders", subtitle = "Episode counts of Result month over years",
+    x = "Result Month", y = "Episode Count", color = "Year") +
+  scale_y_continuous(labels = scales::number) +
+  theme(text=element_text(size=8), axis.title = element_text(size=10), axis.text.x = element_text(angle = 90, vjust = .5))
+
+plot_schdMonthYear_all + plot_schdMonthYear_schd + plot_schdMonthYear_cpt + plot_rstMonthYear_cpt
 
 ## Create control charts
 ### Order Date
-orderMonthYear <- data.frame(table(main_all$`Order MonthYear`))
-colnames(orderMonthYear) <- c("monthYear", "freq")
+cc_orderMonthYear_all <- data.frame(table(main_all$`Order MonthYear`))
+colnames(cc_orderMonthYear_all) <- c("monthYear", "freq")
 
 library(qcc)
-qcc(orderMonthYear$freq, type = "u", sizes = orderMonthYear$freq, labels=orderMonthYear$monthYear, plot=T)
-qcc(orderMonthYear$freq, type = "c", labels = orderMonthYearmonth$monthYear, plot=T)
+plot_cc_orderMonthYear_all_u <- qcc(cc_orderMonthYear_all$freq, type = "u", sizes = cc_orderMonthYear_all$freq, labels=cc_orderMonthYear_all$monthYear, plot=T)
+qcc(cc_orderMonthYear_all$freq, type = "c", labels = cc_orderMonthYear_all$monthYear, plot=T)
 
 library(qicharts)
 set.seed(7)
-qic(y = freq, n = freq, x = monthYear, data = orderMonthYear, chart = 'u', multiply = 1000, main='Rate of orders - u chart', ylab='Rate of orders in month-year unit', xlab='Month-Year', runvals = T, linevals = T) #if taken sample size as patients No
-qic(y = freq, x = monthYear, data = orderMonthYear, chart = 'run', main='Count of orders - run chart', ylab='Count of orders in month unit', xlab='Month-Year', runvals = T, linevals = T) #if taken sample size as days per month
+qic(y = freq, n = freq, x = monthYear, data = cc_orderMonthYear_all, chart = 'u', multiply = 1000, main='Rate of orders - u chart', ylab='Rate of orders in month-year unit', xlab='Month-Year', runvals = T, linevals = T) #if taken sample size as patients No
+plot_cc_orderMonthYear_all_run <- qic(y = freq, x = monthYear, data = cc_orderMonthYear_all, chart = 'run', main='Count of orders - run chart', ylab='Count of orders in month unit', xlab='Month-Year', runvals = T, linevals = T) #if taken sample size as days per month
+
+plot_cc_orderMonthYear_all_u + plot_cc_orderMonthYear_all_run
 
 ### Scheduled Date
 schdMonthYear <- data.frame(table(main_all$`Scheduled MonthYear`))
