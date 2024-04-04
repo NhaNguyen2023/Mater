@@ -32,6 +32,7 @@ library(tidyr) # CrossTable
 library(dplyr) # CrossTable, ggplot
 library(ggplot2)
 library(ggthemes)
+library(ggcorrplot)
 library(qcc) #control charts
 library(qicharts) #run chart, control charts
 library(sqldf)
@@ -385,10 +386,31 @@ colnames(df_cpt) <- c("MRN","orderDate","days_orderToCompleted","cptDate","retDa
 # df_MRN <- list(df_all, df_schd, df_cpt)
 # df_MRN <- df_MRN %>% reduce(full_join, by="MRN") #Error: cannot allocate vector of size 2.3 Gb (too big to run)
 
-pt_MRN_list <- list(data.frame(table(main_all$`Medical Record Number`)),data.frame(table(main_schd$`Medical Record Number`)),as.data.frame(table(main_cpt$`Medical Record Number`)))
-pt_MRN <- pt_MRN_list %>% reduce(full_join, by="Var1")
-colnames(pt_MRN) <- c("MRN","allOrder","scheduledOrder","completedOrder")
-str(pt_MRN)
+pt_MRN_2020 <- list(data.frame(table(df1_all$`Medical Record Number`)), data.frame(table(df1_schd$`Medical Record Number`, year(df1_schd$`Order Date`)==2020)), data.frame(table(df1_cpt$`Medical Record Number`, df1_cpt$`Order Date`)))
+pt_MRN_2020 <- pt_MRN_2020 %>% reduce(full_join, by="Var1")
+colnames(pt_MRN_2020) <- c("MRN","allOrder","scheduledOrder","completedOrder")
+str(pt_MRN_2020)
+
+df1_all$`Medical Record Number` <- factor(df1_all$`Medical Record Number`)
+df2_all$`Medical Record Number` <- factor(df2_all$`Medical Record Number`)
+df3_all$`Medical Record Number` <- factor(df3_all$`Medical Record Number`)
+df4_all$`Medical Record Number` <- factor(df4_all$`Medical Record Number`)
+main_all$`Medical Record Number` <- factor(main_all$`Medical Record Number`)
+pt_MRN_all <- data.frame(table(df1_all$`Medical Record Number`))
+
+df1_schd$`Medical Record Number` <- factor(df1_schd$`Medical Record Number`)
+df1_schd_20 <- count(year(df1_schd$`Order Date`)==2020 & !duplicated(df1_schd$`Medical Record Number`))
+df1_schd_21 <- count(year(df1_schd$`Order Date`)==2021 & !duplicated(df1_schd$`Medical Record Number`))
+df2_schd$`Medical Record Number` <- factor(df2_schd$`Medical Record Number`)
+df2_schd_22 <- count(year(df2_schd$`Order Date`)==2022 & !duplicated(df2_schd$`Medical Record Number`))
+main_schd_20To23 <- count(year(main_schd$`Order Date`)<2024 & !duplicated(df2_schd$`Medical Record Number`))
+
+df1_cpt$`Medical Record Number` <- factor(df1_cpt$`Medical Record Number`)
+df2_cpt$`Medical Record Number` <- factor(df2_cpt$`Medical Record Number`)
+df3_cpt$`Medical Record Number` <- factor(df3_cpt$`Medical Record Number`)
+df4_cpt$`Medical Record Number` <- factor(df4_cpt$`Medical Record Number`)
+main_cpt$`Medical Record Number` <- factor(main_cpt$`Medical Record Number`)
+
 
 ## Transforming data
 # main_group <- main_processed %>% group_by(main_processed$Medical.Record.Number) #library(moments)
@@ -942,80 +964,33 @@ plot_schdMonthYear_all + plot_schdMonthYear_schd + plot_schdMonthYear_cpt + plot
 
 ## Create control charts
 ### Order Date
-cc_orderMonthYear_all <- data.frame(table(main_all$orderMonthYear))
+cc_orderMonthYear_all <- data.frame(table(main_all$`Order MonthYear`))
 colnames(cc_orderMonthYear_all) <- c("monthYear", "freq")
 
 library(qcc)
-qcc(cc_orderMonthYear_all$freq, type = "u", sizes = cc_orderMonthYear_all$freq, labels=cc_orderMonthYear_all$monthYear, plot=T)
+plot_cc_orderMonthYear_all_u <- qcc(cc_orderMonthYear_all$freq, type = "u", sizes = cc_orderMonthYear_all$freq, labels=cc_orderMonthYear_all$monthYear, plot=T)
 qcc(cc_orderMonthYear_all$freq, type = "c", labels = cc_orderMonthYear_all$monthYear, plot=T)
 
 library(qicharts)
 set.seed(7)
 qic(y = freq, n = freq, x = monthYear, data = cc_orderMonthYear_all, chart = 'u', multiply = 1000, main='Rate of orders - u chart', ylab='Rate of orders in month-year unit', xlab='Month-Year', runvals = T, linevals = T) #if taken sample size as patients No
-qic(y = freq, x = monthYear, data = cc_orderMonthYear_all, chart = 'run', main='Count of orders - run chart', ylab='Count of orders in month unit', xlab='Month-Year', runvals = T, linevals = T) #if taken sample size as days per month
+plot_cc_orderMonthYear_all_run <- qic(y = freq, x = monthYear, data = cc_orderMonthYear_all, chart = 'run', main='Count of orders - run chart', ylab='Count of orders in month unit', xlab='Month-Year', runvals = T, linevals = T) #if taken sample size as days per month
 
-
-cc_orderMonthYear_schd <- data.frame(table(main_schd$orderMonthYear))
-colnames(cc_orderMonthYear_schd) <- c("monthYear", "freq")
-
-qcc(cc_orderMonthYear_schd$freq, type = "u", sizes = cc_orderMonthYear_schd$freq, labels=cc_orderMonthYear_schd$monthYear, plot=T)
-qcc(cc_orderMonthYear_schd$freq, type = "c", labels = cc_orderMonthYear_schd$monthYear, plot=T)
-
-set.seed(7)
-qic(y = freq, n = freq, x = monthYear, data = cc_orderMonthYear_schd, chart = 'u', multiply = 1000, main='Rate of orders - u chart', ylab='Rate of orders in month-year unit', xlab='Month-Year', runvals = T, linevals = T) #if taken sample size as patients No
-qic(y = freq, x = monthYear, data = cc_orderMonthYear_schd, chart = 'run', main='Count of orders - run chart', ylab='Count of orders in month unit', xlab='Month-Year', runvals = T, linevals = T) #if taken sample size as days per month
-
-
-cc_orderMonthYear_cpt <- data.frame(table(main_cpt$orderMonthYear))
-colnames(cc_orderMonthYear_cpt) <- c("monthYear", "freq")
-
-qcc(cc_orderMonthYear_cpt$freq, type = "u", sizes = cc_orderMonthYear_cpt$freq, labels=cc_orderMonthYear_cpt$monthYear, plot=T)
-qcc(cc_orderMonthYear_cpt$freq, type = "c", labels = cc_orderMonthYear_cpt$monthYear, plot=T)
-
-set.seed(7)
-qic(y = freq, n = freq, x = monthYear, data = cc_orderMonthYear_cpt, chart = 'u', multiply = 1000, main='Rate of orders - u chart', ylab='Rate of orders in month-year unit', xlab='Month-Year', runvals = T, linevals = T) #if taken sample size as patients No
-qic(y = freq, x = monthYear, data = cc_orderMonthYear_cpt, chart = 'run', main='Count of orders - run chart', ylab='Count of orders in month unit', xlab='Month-Year', runvals = T, linevals = T) #if taken sample size as days per month
+plot_cc_orderMonthYear_all_u + plot_cc_orderMonthYear_all_run
 
 ### Scheduled Date
-schdMonthYear_all <- data.frame(table(main_all$schdMonthYear))
-colnames(schdMonthYear_all) <- c("monthYear", "freq")
+schdMonthYear <- data.frame(table(main_all$`Scheduled MonthYear`))
+colnames(schdMonthYear) <- c("monthYear", "freq")
 
-qcc(schdMonthYear_all$freq, type = "u", sizes = schdMonthYear_all$freq, labels = schdMonthYear_all$monthYear, plot=T)
-qcc(schdMonthYear_all$freq, type = "c", labels = schdMonthYear_all$monthYear, plot=T)
+#library(qcc)
+qcc(schdMonthYear$freq, type = "u", sizes = schdMonthYear$freq, labels = schdMonthYear$monthYear, plot=T)
+qcc(schdMonthYear$freq, type = "c", labels = schdMonthYear$monthYear, plot=T)
 
+#library(qicharts)
 set.seed(7)
-qic(y = freq, n = freq, x = monthYear, data = schdMonthYear_all, chart = 'u', multiply = 1000, main='Rate of scheduled order - u chart', ylab='Rate of schedules in month-year unit', xlab='Month-Year', runvals = T, linevals = T)
-qic(y = freq, x = monthYear, data = schdMonthYear_all, chart = 'run', main='Count of schedules - run chart', ylab='Count of schedules in month-year unit', xlab='Month-Year', runvals = T, linevals = T)
-
-schdMonthYear_schd <- data.frame(table(main_schd$schdMonthYear))
-colnames(schdMonthYear_schd) <- c("monthYear", "freq")
-
-qcc(schdMonthYear_schd$freq, type = "u", sizes = schdMonthYear_schd$freq, labels = schdMonthYear_schd$monthYear, plot=T)
-qcc(schdMonthYear_schd$freq, type = "c", labels = schdMonthYear_schd$monthYear, plot=T)
-
-set.seed(7)
-qic(y = freq, n = freq, x = monthYear, data = schdMonthYear_schd, chart = 'u', multiply = 1000, main='Rate of scheduled order - u chart', ylab='Rate of schedules in month-year unit', xlab='Month-Year', runvals = T, linevals = T)
-qic(y = freq, x = monthYear, data = schdMonthYear_schd, chart = 'run', main='Count of schedules - run chart', ylab='Count of schedules in month-year unit', xlab='Month-Year', runvals = T, linevals = T)
-
-schdMonthYear_cpt <- data.frame(table(main_cpt$cptMonthYear))
-colnames(schdMonthYear_cpt) <- c("monthYear", "freq")
-
-qcc(schdMonthYear_cpt$freq, type = "u", sizes = schdMonthYear_cpt$freq, labels = schdMonthYear_cpt$monthYear, plot=T)
-qcc(schdMonthYear_cpt$freq, type = "c", labels = schdMonthYear_cpt$monthYear, plot=T)
-
-set.seed(7)
-qic(y = freq, n = freq, x = monthYear, data = schdMonthYear_cpt, chart = 'u', multiply = 1000, main='Rate of scheduled order - u chart', ylab='Rate of schedules in month-year unit', xlab='Month-Year', runvals = T, linevals = T)
-qic(y = freq, x = monthYear, data = schdMonthYear_cpt, chart = 'run', main='Count of schedules - run chart', ylab='Count of schedules in month-year unit', xlab='Month-Year', runvals = T, linevals = T)
-
-rstMonthYear_cpt <- data.frame(table(main_cpt$rstMonthYear))
-colnames(rstMonthYear_cpt) <- c("monthYear", "freq")
-
-qcc(rstMonthYear_cpt$freq, type = "u", sizes = rstMonthYear_cpt$freq, labels = rstMonthYear_cpt$monthYear, plot=T)
-qcc(rstMonthYear_cpt$freq, type = "c", labels = rstMonthYear_cpt$monthYear, plot=T)
-
-set.seed(7)
-qic(y = freq, n = freq, x = monthYear, data = rstMonthYear_cpt, chart = 'u', multiply = 1000, main='Rate of scheduled order - u chart', ylab='Rate of schedules in month-year unit', xlab='Month-Year', runvals = T, linevals = T)
-qic(y = freq, x = monthYear, data = rstMonthYear_cpt, chart = 'run', main='Count of schedules - run chart', ylab='Count of schedules in month-year unit', xlab='Month-Year', runvals = T, linevals = T)
+qic(y = freq, n = freq, x = monthYear, data = schdMonthYear, chart = 'u', multiply = 1000, main='Rate of scheduled order - u chart', ylab='Rate of schedules in month-year unit', xlab='Month-Year', runvals = T, linevals = T)
+stats.u(schdMonthYear,sizes = freq) #statistics for Shewert u chart
+qic(y = freq, x = monthYear, data = schdMonthYear, chart = 'run', main='Count of schedules - run chart', ylab='Count of schedules in month-year unit', xlab='Month-Year', runvals = T, linevals = T)
 
 
 # ggplot(main_processed, aes(x = main_processed$daysDiff_attendanceAppoint)) +
@@ -1037,6 +1012,7 @@ colnames(dept_specialty) <- c("subDept","specialty","freq")
 dept_specialty <- dept_specialty %>%
   arrange(desc(freq)) %>%
   slice(1:45)
+
 dept_specialty_plot <- ggplot(dept_specialty, aes(x = reorder(specialty, -freq), y = freq, fill = subDept)) +
   geom_col( position = "dodge", show.legend=F) +
   labs(x = "Specialty") +
@@ -1049,11 +1025,12 @@ colnames(dept_orderGrp) <- c("subDept","orderGrp","freq")
 dept_orderGrp <- dept_orderGrp %>%
   arrange(desc(freq)) %>%
   slice(1:10)
+
 dept_orderGrp_plot <- ggplot(dept_orderGrp, aes(x = reorder(orderGrp, -freq), y = freq, fill = subDept)) +
-  geom_col(position = "dodge") +
+  geom_col(position = "dodge", show.legend = F) +
   labs(x = "Order Location Group") +
   scale_fill_brewer(palette = "Pastel1") +
-  theme(text=element_text(size=8), axis.title = element_text(size=10), axis.text.x = element_text(angle = -90, vjust = .5), legend.position = c(.8,.8))
+  theme(text=element_text(size=8), axis.title = element_text(size=10), axis.text.x = element_text(angle = -90, vjust = .5))
 
 
 dept_episode <- data.frame(table(main_all$`Sub Department`, main_all$`Episode Type`))
@@ -1061,11 +1038,12 @@ colnames(dept_episode) <- c("subDept","episodeType","freq")
 dept_episode <- dept_episode %>%
   arrange(desc(freq)) %>%
   slice(1:4)
+
 dept_episode_plot <- ggplot(dept_episode, aes(x = reorder(episodeType, -freq), y = freq, fill = subDept)) +
-  geom_col(position = "dodge", show.legend=F) +
+  geom_col(position = "dodge") +
   labs(x = "Episode Type") +
   scale_fill_brewer(palette = "Pastel1") +
-  theme(text=element_text(size=8), axis.title = element_text(size=10), axis.text.x = element_text(angle = -90, vjust = .5))
+  theme(text=element_text(size=8), axis.title = element_text(size=10), axis.text.x = element_text(angle = -90, vjust = .5), legend.position = c(1,1))
 
 
 dept_mediCardHolder <- data.frame(table(main_all$`Sub Department`, main_all$`Medical Card Holder`))
@@ -1073,11 +1051,12 @@ colnames(dept_mediCardHolder) <- c("subDept","mediCardHolder","freq")
 dept_mediCardHolder <- dept_mediCardHolder %>%
   arrange(desc(freq)) %>%
   slice(1:2)
-dept_mediCardHolder_plot <- ggplot(dept_mediCardHolder, aes(x = reorder(mediCardHolder, -freq), y = freq, fill = subDept)) +
-  geom_col(position = "dodge", show.legend=F) +
+
+dept_mediCardHolder_plot <- ggplot(dept_mediCardHolder, aes(x = reorder(mediCardHolder, -freq), y = freq, fill = mediCardHolder)) +
+  geom_col(position = "dodge") +
   labs(x = "Medical Card Holder") +
   scale_fill_brewer(palette = "Pastel1") +
-  theme(text=element_text(size=8), axis.title = element_text(size=10), axis.text.x = element_text(angle = 90, vjust = .5))
+  theme(text=element_text(size=8), axis.title = element_text(size=10), axis.text.x = element_text(angle = -90, vjust = .5), legend.position = c(1,1))
 
 
 dept_privateIn <- data.frame(table(main_all$`Sub Department`, main_all$`Private Indicator`))
@@ -1085,11 +1064,12 @@ colnames(dept_privateIn) <- c("subDept","privateIndicator","freq")
 dept_privateIn <- dept_privateIn %>%
   arrange(desc(freq)) %>%
   slice(1:2)
-dept_privateIn_plot <- ggplot(dept_privateIn, aes(x = reorder(privateIndicator, -freq), y = freq, fill = subDept)) +
-  geom_col(position = "dodge", show.legend=F) +
+
+dept_privateIn_plot <- ggplot(dept_privateIn, aes(x = reorder(privateIndicator, -freq), y = freq, fill = privateIndicator)) +
+  geom_col(position = "dodge") +
   labs(x = "Private Indicator") +
   scale_fill_brewer(palette = "Pastel1") +
-  theme(text=element_text(size=8), axis.title = element_text(size=10), axis.text.x = element_text(angle = -90, vjust = .5), legend.position = c(.8,.8))
+  theme(text=element_text(size=8), axis.title = element_text(size=10), axis.text.x = element_text(angle = -90, vjust = .5), legend.position = c(1,1))
 
 
 dept_insuSch <- data.frame(table(main_all$`Sub Department`, main_all$`Insurance Scheme`))
@@ -1097,11 +1077,12 @@ colnames(dept_insuSch) <- c("subDept","insuranceScheme","freq")
 dept_insuSch <- dept_insuSch %>%
   arrange(desc(freq)) %>%
   slice(1:15)
-dept_insuSch_plot <- ggplot(dept_insuSch, aes(x = reorder(insuranceScheme, -freq), y = freq, fill = subDept)) +
+
+dept_insuSch_plot <- ggplot(dept_insuSch, aes(x = reorder(insuranceScheme, -freq), y = freq, fill = insuranceScheme)) +
   geom_col(position = "dodge") +
   labs(x = "Insurance Scheme") +
   scale_fill_brewer(palette = "Pastel1") +
-  theme(text=element_text(size=8), axis.title = element_text(size=10), axis.text.x = element_text(angle = -90, vjust = .5), legend.position = c(.8,.8))
+  theme(text=element_text(size=8), axis.title = element_text(size=10), axis.text.x = element_text(angle = -90, vjust = .5), legend.position = c(1,1))
 
 
 dept_itemPrior <- data.frame(table(main_all$`Sub Department`, main_all$`Item Priority`))
@@ -1109,11 +1090,12 @@ colnames(dept_itemPrior) <- c("subDept","itemPriority","freq")
 dept_itemPrior <- dept_itemPrior %>%
   arrange(desc(freq)) %>%
   slice(1:6)
-dept_itemPrior_plot <- ggplot(dept_itemPrior, aes(x = reorder(itemPriority, -freq), y = freq, fill = subDept)) +
-  geom_col(position = "dodge", show.legend=F) +
+
+dept_itemPrior_plot <- ggplot(dept_itemPrior, aes(x = reorder(itemPriority, -freq), y = freq, fill = itemPriority)) +
+  geom_col(position = "dodge") +
   labs(x = "Item Priority") +
   scale_fill_brewer(palette = "Pastel1") +
-  theme(text=element_text(size=8), axis.title = element_text(size=10), axis.text.x = element_text(angle = -90, vjust = .5))
+  theme(text=element_text(size=8), axis.title = element_text(size=10), axis.text.x = element_text(angle = -90, vjust = .5), legend.position = c(1,1))
 
 
 dept_itemNo <- data.frame(table(main_all$`Sub Department`, main_all$`No Order Items`))
@@ -1121,11 +1103,12 @@ colnames(dept_itemNo) <- c("subDept","numOrderItems","freq")
 dept_itemNo <- dept_itemNo %>%
   arrange(desc(freq)) %>%
   slice(1:15)
-dept_itemNo_plot <- ggplot(dept_itemNo, aes(x = reorder(numOrderItems, -freq), y = freq, fill = subDept)) +
+
+dept_itemNo_plot <- ggplot(dept_itemNo, aes(x = reorder(numOrderItems, -freq), y = freq, fill = numOrderItems)) +
   geom_col(position = "dodge") +
   labs(x = "Number of Order Items") +
   scale_fill_brewer(palette = "Pastel1") +
-  theme(text=element_text(size=8), axis.title = element_text(size=10), axis.text.x = element_text(angle = -90, vjust = .5), legend.position = c(.8,.8))
+  theme(text=element_text(size=8), axis.title = element_text(size=10), axis.text.x = element_text(angle = -90, vjust = .5), legend.position = c(1,1))
 
 
 dept_futuBr <- data.frame(table(main_all$`Sub Department`, main_all$`Future Breach`))
@@ -1133,18 +1116,52 @@ colnames(dept_futuBr) <- c("subDept","futureBreach","freq")
 dept_futuBr <- dept_futuBr %>%
   arrange(desc(freq)) %>%
   slice(1:4)
-dept_futuBr_plot <- ggplot(dept_futuBr, aes(x = reorder(futureBreach, -freq), y = freq, fill = subDept)) +
-  geom_col(position = "dodge", show.legend=F) +
+
+dept_futuBr_plot <- ggplot(dept_futuBr, aes(x = reorder(futureBreach, -freq), y = freq, fill = futureBreach)) +
+  geom_col(position = "dodge") +
   labs(x = "Number of Future Breach") +
   scale_fill_brewer(palette = "Pastel1") +
-  theme(text=element_text(size=8), axis.title = element_text(size=10), axis.text.x = element_text(angle = -90, vjust = .5), legend.position = c(.8,.8))
+  theme(text=element_text(size=8), axis.title = element_text(size=10), axis.text.x = element_text(angle = -90, vjust = .5), legend.position = c(1,1))
 
 
 dept_specialty_plot
 dept_episode_plot|dept_orderGrp_plot
 dept_itemPrior_plot + dept_futuBr_plot / dept_itemNo_plot
-dept_insuSch_plot| dept_mediCardHolder_plot + dept_privateIn_plot
+dept_insuSch_plot| dept_mediCardHolder_plot / dept_privateIn_plot
 
+## Correlation matrix for factors categorical data
+library(ggcorrplot)
+
+main_processed <- main_all[,c("Sub Department","Order Status","Date of Death Ind.","Insurance Scheme","Episode Type","Medical Card Holder","Item Priority","Ordering Specialty Description","Private Indicator","Scheduled MonthYear","Order MonthYear","Gender","No Order Items","Future Breach","Order Location Group")]
+colnames(main_processed) <- c("subDept","orderStatus","DOD","insScheme","episodeT","mediCard","itemPriority","specialty","private","schdMonthYear","orderMonthYear","gender","nuItems","futureBr","orderLocGrp")
+main_processed <- main_processed %>% 
+  mutate_if(is.character,as.factor) %>% 
+  mutate_if(is.numeric,as.factor)
+model.matrix(~0+., data=main_processed) %>%
+  cor(use = "pairwise.complete.obs") %>%
+  ggcorrplot(show.diag=F, type="lower", lab=T, lab_size = 2)
+
+library(lsr)
+f = function(x,y) {
+    tbl = main_processed %>% select(x,y) %>% table()
+    chisq_pval = round(chisq.test(tbl)$p.value, 4)
+    cramV = round(cramersV(tbl), 4) 
+    data.frame(x, y, chisq_pval, cramV) }
+
+# create unique combinations of column names
+# sorting will help getting a better plot (upper triangular)
+main_processed_comb = data.frame(t(combn(sort(names(main_processed)), 2)), stringsAsFactors = T)
+
+# apply function to each variable combination
+main_processed_res = map2_df(main_processed_comb$X1, main_processed_comb$X2, f)
+
+# plot results
+main_processed_res %>%
+  ggplot(aes(x,y,fill=chisq_pval))+
+  geom_tile()+
+  geom_text(aes(x,y,label=cramV))+
+  scale_fill_gradient(low="red", high="yellow")+
+  theme_classic()
 
 ## Factors by order time
 dept_orderDate <- data.frame(table(main_all$`Sub Department`, main_all$`Order Date`))
