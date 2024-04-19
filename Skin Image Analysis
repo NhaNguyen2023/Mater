@@ -1,9 +1,13 @@
 library(keras)
-library(EBImage)
+library(EBImage) #not able to install
+library(ijtiff) #install.packages()
 library(stringr)
 library(pbapply)
+install_keras()
 
-skin_img <- readImage("C:/Users/nhanguyen/Downloads/R/Skin/Data/resized training images/ISIC_0000004.jpeg")
+setwd("C:/Users/nhanguyen/Downloads/R/Skin/Data")
+path = system.file("resized training images", "ISIC_0000004", package = "ijtiff")
+skin_img <- read_tif("C:/Users/nhanguyen/Downloads/R/Skin/Data/resized training images")
 display(skin_img)
 
 # Set image size
