@@ -7,11 +7,14 @@ library(stringr)
 library(pbapply)
 install_keras()
 
+setwd("C:/Users/nhanguyen/Downloads/R/Skin/Data")
 #Get the list of all images
 allFiles <- list.files(path = "C:/Users/nhanguyen/Downloads/R/Skin/Data/resized training images", pattern = ".jpg", full.names = T)
+allFiles1 <- list.files(path = "C:/Users/nhanguyen/Downloads/R/Skin/Data/resized training images", full.names = T)
 
 #Get the dataframe with info
 allInfo <- image_info(image_read(allFiles)) # takes a lot of time and space to read
+allInfo1 <- image_info(image_read(allFiles1))
 
 #Attach the file names
 allInfo$fileName = list.files(path = "C:/Users/nhanguyen/Downloads/R/Skin/Data/resized training images", pattern = ".jpg")
@@ -19,16 +22,34 @@ allInfo$fileName = list.files(path = "C:/Users/nhanguyen/Downloads/R/Skin/Data/r
 #Save
 write.csv(allInfo, "allImageInfo.csv")
 
-setwd("C:/Users/nhanguyen/Downloads/R/Skin/Data")
-skin_img <- image_read("C:/Users/nhanguyen/Downloads/R/Skin/Data/resized training images/ISIC_0000004.jpeg")
-image_info(skin_img)
+#Read the truth
+allResult <- read.csv("ISIC_2019_Training_GroundTruth.csv")
+varSize <- function(data, column_name) {
+  size <- sum(data[column_name])
+  return(size)
+}
+mel <- varSize(allResult, "MEL")
+mel
+allResult$outcome <- ifelse(allResult$MEL==1, "MEL", ifelse(allResult$NV==1, "NV", ifelse(allResult$BCC==1, "BCC", ifelse(allResult$AK==1, "AK", ifelse(allResult$BKL==1, "BKL", ifelse(allResult$DF==1, "DF", ifelse(allResult$VASC==1, "VASC", ifelse(allResult$SCC==1, "SCC", NA))))))))
 
-sample1 <- sample(c(TRUE,FALSE), nrow(skin_img), replace=TRUE, prob=c(0.7,0.2,0.1))
-train <- skin_img[sample1, ]
-test <- skin_img[!sample1, ]
-set.seed(13)
-allFilesIndex <- data.frame(createDataPartition(allFiles, p=.7, list=FALSE, times=10))
-head(allFilesIndex)
+#sample <- sample(c(TRUE,FALSE), nrow(allInfo), replace=TRUE, prob=c(0.7,0.3))
+#train <- allInfo[sample, ]
+#validation <- allInfo[!sample, ]
+#set.seed(13)
+#allFilesIndex <- data.frame(createDataPartition(allFiles, p=.7, list=FALSE, times=10))
+#head(allFilesIndex)
+
+skin_img <- allInfo %>% full_join(allResult, by = join_by(name == image),keep=T)
+
+train_x, test_x, train_y, test_y <- train_test_split(allInfo, Y, test_size=0.3, random_state=230)
+#inspect the shape of training and testing
+print(train_x.shape)
+print(train_y.shape)
+print(test_x.shape)
+print(test_y.shape)
+
+library(DMwR)
+mel <- SMOTE(MEL ~ ., allInfo, perc.over = 
 
 # Set image size
 width <- 50
@@ -123,3 +144,8 @@ legend("topleft", legend = probs[i], bty = "n", col = "white")
 }
 # Save model
 save(model, file = "CNNmodel.RData")
+
+model.fit(train_x, train_y, epochs = 5, batch_size = 3546)
+preds <- model.evaludate(test_x, test_y)
+print ("Loss = " + str(preds[0]))
+print ("Test Accuracy = " + str(preds[1]))
