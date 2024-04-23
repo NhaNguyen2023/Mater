@@ -27,6 +27,7 @@ allFiles <- list.files(path = "C:/Users/nhanguyen/Downloads/R/Skin/Data/resized 
 #file.create("new_word.docx")
 #file.create("new_csv.csv")
 
+#1 Data
 # Get the files from a browsed folder
 #list.files(path = choose.dir()) 
 #onlFiles <- list.files(path = choose.dir())
@@ -87,6 +88,8 @@ img <- map(sample_img, load.image) #library(imager)
 par(mfrow = c(2, 3)) # Create 2 x 3 image grid
 map(img, plot)
 
+#2 Data Preprocessing
+#2.1 Data Augmentation
 # Desired height and width of images
 target_size <- c(255, 255)
 
@@ -112,7 +115,7 @@ train_image_array_gen <- flow_images_from_directory(directory = "Data/resized tr
                                                     )
 
 # Validation Dataset
-val_image_array_gen <- flow_images_from_directory(directory = "data/train/",
+val_image_array_gen <- flow_images_from_directory(directory = "Data/resized training images/",
                                                   target_size = target_size, 
                                                   color_mode = "rgb", 
                                                   batch_size = batch_size ,
@@ -120,6 +123,280 @@ val_image_array_gen <- flow_images_from_directory(directory = "data/train/",
                                                   subset = "validation", # declare that this is the validation data
                                                   generator = train_data_gen
                                                   )
+
+# Number of training samples
+train_samples <- train_image_array_gen$n
+
+# Number of validation samples
+valid_samples <- val_image_array_gen$n
+
+# Number of target classes/categories
+output_n <- n_distinct(train_image_array_gen$classes)
+
+# Get the class proportion
+table("\nFrequency" = factor(train_image_array_gen$classes)
+      ) %>% 
+  prop.table()
+
+#3 CNN
+#3.1 Model Architecture
+# input shape of the image
+c(target_size, 3)
+
+# Set Initial Random Weight
+tensorflow::tf$random$set_seed(123)
+
+model <- keras_model_sequential(name = "simple_model") %>% 
+  
+  # Convolution Layer
+  layer_conv_2d(filters = 16,
+                kernel_size = c(3,3),
+                padding = "same",
+                activation = "relu",
+                input_shape = c(target_size, 3) 
+                ) %>% 
+
+  # Max Pooling Layer
+  layer_max_pooling_2d(pool_size = c(2,2)) %>% 
+  
+  # Flattening Layer
+  layer_flatten() %>% 
+  
+  # Dense Layer
+  layer_dense(units = 16,
+              activation = "relu") %>% 
+  
+  # Output Layer
+  layer_dense(units = output_n,
+              activation = "softmax",
+              name = "Output")
+  
+model
+
+#3.2 Model Fitting
+model %>% 
+  compile(
+    loss = "categorical_crossentropy",
+    optimizer = optimizer_adam(lr = 0.01),
+    metrics = "accuracy"
+  )
+
+# Fit data into model
+history <- model %>% 
+  fit(
+  # training data
+  train_image_array_gen,
+
+  # training epochs
+  steps_per_epoch = as.integer(train_samples / batch_size), 
+  epochs = 30, 
+  
+  # validation data
+  validation_data = val_image_array_gen,
+  validation_steps = as.integer(valid_samples / batch_size)
+)
+
+plot(history)
+
+#3.3 Model Evaluation
+val_data <- data.frame(file_name = paste0("Data/resized training images/", val_image_array_gen$fileName)) %>% 
+  mutate(class = str_extract(file_name, "DF|NV|MEL|BCC|BKL|AK|SCC|VASC"))
+
+head(val_data, 10)
+
+# Function to convert image to array
+image_prep <- function(x) {
+  arrays <- lapply(x, function(path) {
+    img <- image_load(path, target_size = target_size, 
+                      grayscale = F # Set FALSE if image is RGB
+                      )
+    
+    x <- image_to_array(img)
+    x <- array_reshape(x, c(1, dim(x)))
+    x <- x/255 # rescale image pixel
+  })
+  do.call(abind::abind, c(arrays, list(along = 1)))
+}
+
+test_x <- image_prep(val_data$file_name)
+
+# Check dimension of testing data set
+dim(test_x)
+
+pred_test <- predict_classes(model, test_x) 
+head(pred_test, 10)
+
+# Convert encoding to label
+decode <- function(x){
+  case_when(x == 0 ~ "DF",
+            x == 1 ~ "NV",
+            x == 2 ~ "MEL",
+            x == 3 ~ "BCC",
+            x == 4 ~ "BKL",
+            x == 5 ~ "AK",
+            x == 6 ~ "SCC",
+            x == 7 ~ "VASC"
+            )
+}
+
+pred_test <- sapply(pred_test, decode) 
+
+head(pred_test, 10)
+
+confusionMatrix(as.factor(pred_test), 
+                as.factor(val_data$outcome)
+                )
+
+#4 Tuning the Model
+#4.1 Model Architecture
+model
+# Design new model
+tensorflow::tf$random$set_seed(123)
+
+model_big <- keras_model_sequential() %>% 
+  
+  # First convolutional layer
+  layer_conv_2d(filters = 32,
+                kernel_size = c(5,5), # 5 x 5 filters
+                padding = "same",
+                activation = "relu",
+                input_shape = c(target_size, 3)
+                ) %>% 
+  
+  # Second convolutional layer
+  layer_conv_2d(filters = 32,
+                kernel_size = c(3,3), # 3 x 3 filters
+                padding = "same",
+                activation = "relu"
+                ) %>% 
+  
+  # Max pooling layer
+  layer_max_pooling_2d(pool_size = c(2,2)) %>% 
+  
+  # Third convolutional layer
+  layer_conv_2d(filters = 64,
+                kernel_size = c(3,3),
+                padding = "same",
+                activation = "relu"
+                ) %>% 
+
+  # Max pooling layer
+  layer_max_pooling_2d(pool_size = c(2,2)) %>% 
+  
+  # Fourth convolutional layer
+  layer_conv_2d(filters = 128,
+                kernel_size = c(3,3),
+                padding = "same",
+                activation = "relu"
+                ) %>% 
+  
+  # Max pooling layer
+  layer_max_pooling_2d(pool_size = c(2,2)) %>% 
+
+  # Fifth convolutional layer
+  layer_conv_2d(filters = 256,
+                kernel_size = c(3,3),
+                padding = "same",
+                activation = "relu"
+                ) %>% 
+  
+  # Max pooling layer
+  layer_max_pooling_2d(pool_size = c(2,2)) %>% 
+  
+  # Flattening layer
+  layer_flatten() %>% 
+  
+  # Dense layer
+  layer_dense(units = 64,
+              activation = "relu") %>% 
+  
+  # Output layer
+  layer_dense(name = "Output",
+              units = 3, 
+              activation = "softmax")
+
+model_big
+
+#4.2 Model Fitting
+# train the data with 50 epochs (more epochs). We will also lower the learning rate from 0.01 to 0.001
+model_big %>% 
+  compile(
+    loss = "categorical_crossentropy",
+    optimizer = optimizer_adam(lr = 0.001),
+    metrics = "accuracy"
+  )
+
+history <- model %>% 
+  fit_generator(
+  # training data
+  train_image_array_gen,
+  
+  # epochs
+  steps_per_epoch = as.integer(train_samples / batch_size), 
+  epochs = 50, 
+  
+  # validation data
+  validation_data = val_image_array_gen,
+  validation_steps = as.integer(valid_samples / batch_size),
+  
+  # print progress but don't create graphic
+  verbose = 1,
+  view_metrics = 0
+)
+
+plot(history)
+
+#4.3 Model Evaluation
+pred_test <- predict_classes(model_big, test_x) 
+head(pred_test, 10)
+# Convert encoding to label
+decode <- function(x){
+  case_when(x == 0 ~ "DF",
+            x == 1 ~ "NV",
+            x == 2 ~ "MEL",
+            x == 3 ~ "BCC",
+            x == 4 ~ "BKL",
+            x == 5 ~ "AK",
+            x == 6 ~ "SCC",
+            x == 7 ~ "VASC"
+            )
+}
+
+pred_test <- sapply(pred_test, decode) 
+head(pred_test, 10)
+
+confusionMatrix(as.factor(pred_test), 
+                as.factor(val_data$outcome)
+                )
+
+#5 Predict data in Testing dataset
+df_test  <- read.csv(".csv")
+head(df_test, 10)
+
+# convert image into 2D array
+test_x <- image_prep(df_test$file_name)
+# Check dimension of testing data set
+dim(test_x)
+
+pred_test <- predict_classes(model_big, test_x) 
+head(pred_test, 10)
+
+# Convert encoding to label
+decode <- function(x){
+  case_when(x == 0 ~ "cat",
+            x == 1 ~ "dog",
+            x == 2 ~ "panda"
+            )
+}
+
+pred_test <- sapply(pred_test, decode) 
+head(pred_test, 10)
+
+confusionMatrix(as.factor(pred_test), 
+                as.factor(df_test$class)
+                )
+
+
 
 train_x, valid_x, train_y, valid_y <- train_test_split(skin_img, Y, test_size=0.3, random_state=230)
 #inspect the shape of training and testing
