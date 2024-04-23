@@ -7,23 +7,41 @@ library(stringr)
 library(pbapply)
 install_keras()
 
+getwd()
 setwd("C:/Users/nhanguyen/Downloads/R/Skin/Data")
-#Get the list of all images
+#setwd(paste0(getwd(),"/."))
+
+# Get the list of all images in a specific folder
 allFiles <- list.files(path = "C:/Users/nhanguyen/Downloads/R/Skin/Data/resized training images", pattern = ".jpg", full.names = T)
-allFiles1 <- list.files(path = "C:/Users/nhanguyen/Downloads/R/Skin/Data/resized training images", full.names = T)
 
-#Get the dataframe with info
+# checking if a file or folder exists
+#file.exists("")
+#file_access(), file_exists(), dir_exists(), link_exists(): Query for existence and access permissions
+
+# directory creation
+#ifelse(!dir.exists("Images"), dir.create("Images"), "Folder exists already")
+#list.files(recursive = TRUE) #identify all files w/in the subfolders
+
+# blank file
+#file.create("new_text.txt")
+#file.create("new_word.docx")
+#file.create("new_csv.csv")
+
+# Get the files from a browsed folder
+#list.files(path = choose.dir()) 
+#onlFiles <- list.files(path = choose.dir())
+
+# Get the dataframe with info
 allInfo <- image_info(image_read(allFiles)) # takes a lot of time and space to read
-allInfo1 <- image_info(image_read(allFiles1))
 
-#Attach the file names
+# Attach the file names
 allInfo$fileName = list.files(path = "C:/Users/nhanguyen/Downloads/R/Skin/Data/resized training images", pattern = ".jpg")
 
 #Save
 write.csv(allInfo, "allImageInfo.csv")
 
 #Read the truth
-allResult <- read.csv("ISIC_2019_Training_GroundTruth.csv")
+allResult <- read.csv("ISIC_2019_Training_GroundTruth1.csv")
 varSize <- function(data, column_name) {
   size <- sum(data[column_name])
   return(size)
@@ -39,17 +57,79 @@ allResult$outcome <- ifelse(allResult$MEL==1, "MEL", ifelse(allResult$NV==1, "NV
 #allFilesIndex <- data.frame(createDataPartition(allFiles, p=.7, list=FALSE, times=10))
 #head(allFilesIndex)
 
-skin_img <- allInfo %>% full_join(allResult, by = join_by(name == image),keep=T)
+colnames(allResult)[1] <- "fileName"
+head(allResult)
+skin_img <- merge(x=allInfo, y=allResult, by="fileName", all=TRUE)
 
-train_x, test_x, train_y, test_y <- train_test_split(allInfo, Y, test_size=0.3, random_state=230)
+folder_list <- list.files("C:/Users/nhanguyen/Downloads/R/Skin/Data/resized training images/")
+folder_list
+
+folder_path <- paste0("C:/Users/nhanguyen/Downloads/R/Skin/Data/resized training images/", folder_list, "/")
+folder_path
+# Get file name
+file_name <- map(folder_path, 
+                 function(x) paste0(x, list.files(x))
+                 ) %>% 
+  unlist() #map function in package purrr
+
+head(file_name)
+tail(file_name)
+length(file_name)
+
+# Randomly select image
+set.seed(99)
+sample_img <- sample(file_name, 6)
+
+# Load image into R
+img <- map(sample_img, load.image) #library(imager)
+
+# Plot image
+par(mfrow = c(2, 3)) # Create 2 x 3 image grid
+map(img, plot)
+
+# Desired height and width of images
+target_size <- c(255, 255)
+
+# Batch size for training the model
+batch_size <- 32
+
+# Image Generator
+train_data_gen <- image_data_generator(rescale = 1/255, # Scaling pixel value
+                                       horizontal_flip = T, # Flip image horizontally
+                                       vertical_flip = T, # Flip image vertically 
+                                       rotation_range = 45, # Rotate image from 0 to 45 degrees
+                                       zoom_range = 0.25, # Zoom in or zoom out range
+                                       validation_split = 0.2 # 20% data as validation data
+                                       )
+# Training Dataset
+train_image_array_gen <- flow_images_from_directory(directory = "Data/resized training images/", # Folder of the data
+                                                    target_size = target_size, # target of the image dimension (64 x 64)  
+                                                    color_mode = "rgb", # use RGB color
+                                                    batch_size = batch_size , 
+                                                    seed = 123,  # set random seed
+                                                    subset = "training", # declare that this is for training data
+                                                    generator = train_data_gen
+                                                    )
+
+# Validation Dataset
+val_image_array_gen <- flow_images_from_directory(directory = "data/train/",
+                                                  target_size = target_size, 
+                                                  color_mode = "rgb", 
+                                                  batch_size = batch_size ,
+                                                  seed = 123,
+                                                  subset = "validation", # declare that this is the validation data
+                                                  generator = train_data_gen
+                                                  )
+
+train_x, valid_x, train_y, valid_y <- train_test_split(skin_img, Y, test_size=0.3, random_state=230)
 #inspect the shape of training and testing
 print(train_x.shape)
 print(train_y.shape)
-print(test_x.shape)
-print(test_y.shape)
+print(valid_x.shape)
+print(valid_y.shape)
 
 library(DMwR)
-mel <- SMOTE(MEL ~ ., allInfo, perc.over = 
+mel <- SMOTE(MEL ~ ., skin_img, perc.over = 
 
 # Set image size
 width <- 50
