@@ -1,0 +1,529 @@
+---
+title: "Skin Analysis"
+output: html_document
+date: "2024-04-24"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+## Data Source: https://challenge.isic-archive.com/data
+# Load library package
+```{r load working space, echo=FALSE}
+## Load working environment
+rm(list = ls())
+
+#library(dataQualityR) #package is not available for this version of R
+library(stringr)
+library(readr)
+library(readxl)
+library(tidyverse) #table (frequency and proportion), install.packages("tidyverse")
+library(tidyr) # CrossTable
+library(dplyr) # CrossTable, ggplot
+library(ggplot2)
+library(ggthemes)
+library(ggcorrplot)
+library(qcc) #control charts
+library(qicharts) #run chart, control charts
+library(sqldf)
+# library(Rcmdr)  #continuous var, numSummary function, install.packages("Rcmdr") ##not running if in hurry
+library(gridExtra)  #graph
+
+library(Hmisc)  #Imputate missing values
+#library(DMwR) #Compute the accuracy of imputation, but need to install the other packages
+
+library(psych) #install, describeBy
+library(moments)  #skewness,kurtosis
+library(plyr)   #categorical var, install.packages("plyr")
+library(pastecs) #stat.desc
+library(semTools)
+library(car)  #leveneTest, Scatterplot matrix
+
+library(dunn.test) #dunn.test, non-parametric post-hoc test after Kruskal-Wallis
+library(stats)  #multiple regression lm() function, lapply function
+library(PerformanceAnalytics) #chart.Correlation (Scatterplot)
+
+library(caret) #classification & regression training, confusionMatrix, varImp
+library(rbenchmark) #plogis
+library(rcompanion) #nagelkerke
+library(regclass) #vif
+# library(C50)
+library(AppliedPredictiveModeling) #Scatterplot, install.packages('AppliedPredictiveModeling')
+library(rpart)
+library(rpart.plot)
+library(pROC)  #cross validation
+library(gmodels)  #Evaluate the model, CrossTable correlation, install.packages("gmodels")
+library(epiDisplay) #plot with AUC for model prediction
+library(survey) #comparing models, regTermTest
+library(rattle)
+library(RColorBrewer)
+```
+
+# Load file & view
+
+```{r load file, echo=TRUE}
+# Training data
+getwd()
+#setwd(paste0(getwd(),"/."))
+setwd("C:/Users/User/Documents/RStudio") #remote environment
+ifelse(!dir.exists("Skin"), dir.create("Skin"), "Folder exists already")
+setwd("./RStudio/Skin")
+dir.create("train")
+dir.create("test")
+setwd("./Skin")
+list.files(path = "./train", full.names = T)
+
+file_train <- "ISIC_2019_Training_Metadata.csv"
+trainMeta <- read.csv(file_train)
+
+trainTruth <- read.csv("ISIC_2019_Training_GroundTruth.csv")
+testMeta <- read.csv("ISIC_2019_Test_Metadata.csv")
+
+skin_train <- merge(x=trainMeta, y=trainTruth, by="image", all=TRUE)
+skin_train$outcome <- ifelse(skin_train$MEL==1, "MEL", ifelse(skin_train$NV==1, "NV", ifelse(skin_train$BCC==1, "BCC", ifelse(skin_train$AK==1, "AK", ifelse(skin_train$BKL==1, "BKL", ifelse(skin_train$DF==1, "DF", ifelse(skin_train$VASC==1, "VASC", ifelse(skin_train$SCC==1, "SCC", NA))))))))
+
+
+
+## View variable types
+skin_train %>% glimpse() #glimpse from library(dplyr)
+head(skin_train,10)
+
+## Remove NAs or impute NAs if necessary
+skin_train[skin_train ==""] <- NA
+allMissing <- is.na(skin_train)
+counts = colSums(allMissing)
+counts [counts>0]
+```
+
+
+```{r transform values, echo=TRUE}
+# All orders
+## Variables description
+### Category variables
+sort(unique(skin_train$anatom_site_general))
+sort(unique(skin_train$sex))
+sort(unique(skin_train$outcome))
+### Numeric variables
+summary(skin_train$age_approx)
+```
+
+
+```{r correlation, echo=TRUE}
+gmodels::CrossTable(skin_train$anatom_site_general, skin_train$outcome, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+gmodels::CrossTable(skin_train$sex, skin_train$outcome, digits=2, fisher=F, chisq=TRUE, expected=TRUE)
+
+bartlett.test(skin_train$age_approx, skin_train$outcome)
+kruskal.test(age_approx ~ outcome, data=skin_train)
+dunn_result <- dunn.test::dunn.test(as.numeric(skin_train$age_approx), g=skin_train$outcome, method="bonferroni")
+
+```
+```{r sampling}
+#Check if any character values in variables
+any(sapply(skin_train, is.character)) %>%
+  knitr::knit_print()
+
+#Check missing values
+any(is.na(skin_train)) %>%
+  knitr::knit_print()
+
+#Encoding the target feature as factor
+library(dplyr)
+skin_train <- skin_train %>% 
+  mutate_if(is.character,as.factor)
+summary(skin_train)
+dim(skin_train)
+sum(is.na(skin_train))
+
+#Removing NA values to run SVM model
+skin_train <- skin_train[stats::complete.cases(skin_train),]
+table(skin_train$outcome)
+
+#Recode response variable to 2 levels of value
+skin_train$binary_outcome <- plyr::mapvalues(skin_train$outcome, from = c("MEL","NV","BCC","AK","BKL","DF","VASC","SCC"), to = c(1,0,0,0,0,0,0,0))
+
+#Over Sampling
+skin_train_over <- ROSE::ovun.sample(binary_outcome ~ ., skin_train, method="over", N=30000)$data
+
+#Under Sampling
+skin_train_under <- ROSE::ovun.sample(binary_outcome ~ ., skin_train, method="under", N=13000)$data
+
+#Both Sampling
+skin_train_both <- ROSE::ovun.sample(binary_outcome ~ ., skin_train, method="both", p=0.5, seed=230, N=20000)$data
+
+#ROSE Sampling
+skin_train_rose <- ROSE::ROSE(binary_outcome ~ ., skin_train, seed=230, N=20000)$data
+
+#SMOTE Sampling
+skin_train_new <- performanceEstimation::smote(outcome ~ ., skin_train, perc.over = 105000, k=4, perc.under = 42000, size=1000)
+#SMOTE is a oversampling technique which synthesizes a new minority instance between a pair of one minority instance and one of its k-NN. perc.over, perc.under control the amount of over-sampling of the minority class and under-sampling of the majority class. 
+##For each case in the orginal data set belonging to the minority class, perc.over new examples of that class will be created.
+##The parameter perc.under controls the proportion of cases of the majority class that will be randomly selected for the final 'balanced' dataset.
+##The parameter k controls the way the new examples are created.
+
+#Create training and test dataset samples
+set.seed(123)
+##original
+sample <- sample(c(TRUE,FALSE), nrow(skin_train_over), replace=TRUE, prob=c(0.7,0.3))
+train <- skin_train[sample, ]
+valid <- skin_train[!sample, ]
+#Double-check NAs
+sum(is.na(train))
+sum(is.na(valid))
+
+##over sampling
+sample_over <- sample(c(TRUE,FALSE), nrow(skin_train_over), replace=TRUE, prob=c(0.7,0.3))
+train_over <- skin_train_over[sample_over, ]
+valid_over <- skin_train_over[!sample_over, ]
+
+##under sampling
+sample_under <- sample(c(TRUE,FALSE), nrow(skin_train_under), replace=TRUE, prob=c(0.7,0.3))
+train_under <- skin_train_under[sample_under, ]
+valid_under <- skin_train_under[!sample_under, ]
+
+##both sampling
+sample_both <- sample(c(TRUE,FALSE), nrow(skin_train_both), replace=TRUE, prob=c(0.7,0.3))
+train_both <- skin_train_both[sample_both, ]
+valid_both <- skin_train_both[!sample_both, ]
+
+##ROSE sampling
+sample_rose <- sample(c(TRUE,FALSE), nrow(skin_train_rose), replace=TRUE, prob=c(0.7,0.3))
+train_rose <- skin_train_rose[sample_rose, ]
+valid_rose <- skin_train_rose[!sample_rose, ]
+
+#==================== prepare training and test sets
+if (TRUE){
+  trainingSetPercentage =70
+  testSetPercentage = 100 - trainingSetPercentage
+  
+  lev <- c(8) #selection of sample methods
+  for (sampleMethod in unique(lev)){
+    
+    x <- NULL
+    trainset <- NULL
+    testset  <- NULL
+    sampleMethodLabel <- NULL
+    
+    if (sampleMethod==1) {
+      #==================================== prepare dataset (training) with STRATIFIED SAMPLING (on full dataset)
+      x <- stratifiedSampling(mydata, targetFeature, trainingSetPercentage)
+      trainset = x[[1]]
+      testset = x[[2]]
+    }
+    else if (sampleMethod==6) {
+      #==================================== prepare dataset (training) with SMOTE SAMPLING (on full dataset)
+      x <- smoteSamplingOnFullDataset(mydata, targetFeature, trainingSetPercentage, independentFeatures)
+      trainset = x[[1]]
+      testset = x[[2]]
+    }
+    else if (sampleMethod==7) {
+      #==================================== prepare dataset (training) with SMOTE SAMPLING (on training stratified dataset)
+      x <- stratifiedSampling(mydata, targetFeature, trainingSetPercentage)
+      testset = x[[2]]
+      x <- smoteSamplingOnTrainingSet(x[[1]], targetFeature, independentFeatures)
+      trainset = x[[1]]
+    }
+    else if (sampleMethod==9) {
+      #==================================== prepare dataset (training) with STRATIFIED (with caret createFolds)
+      mydata[,c(targetFeature)]<- factor(mydata[,c(targetFeature)])
+      names(mydata)[names(mydata) == "Class"] <- targetFeature
+      
+      #by default the createFolds function applies stratification
+      numOfFolds <- 10
+      cvIndex <- createFolds(factor(mydata$FinalPerformanceClass), k= numOfFolds, returnTrain=TRUE)
+      str(cvIndex)		
+      
+      trainset <- mydata		
+    }
+  }
+}
+    
+#=====================  Look at a summary of the training and test sets
+if (FALSE){
+  sapply(trainset,summary)   
+  NROW(trainset)
+  NROW(testset)
+  #=======trainset
+  #trainset[,c(targetFeature)] <- as.factor(trainset[,c(targetFeature)])
+  table(trainset[,c(targetFeature)] )
+  #=======testset
+  table(testset[,c(targetFeature)] )
+  print(hist(as.numeric(trainset[,c(targetFeature)])))
+  print(hist(as.numeric(testset[,c(targetFeature)])))
+}
+
+#=======================================================================  prepare training scheme
+#Train/Test split: if you have a lot of data and determine you need a lot of data to build accurate models
+#Cross Validation: 5 folds or 10 folds provide a commonly used tradeoff of speed of compute time and generalize error estimate.
+#Repeated Cross Validation: 5- or 10-fold cross validation and 3 or more repeats to give a more robust estimate, only if you have a small dataset and can afford the time.
+if (TRUE){
+  methodPar <- "repeatedcv" #, "repeatedcv" #or "cv" or "LOOCV", or "oob" 
+  #note: "oob" (out of bag is just for rf, treebag, cforest, bagEarth, bagEarthGCV, bagFDA, bagFDAGCV, parRF)
+  numberPar <- 10 #folds
+  repeatsPar <- 3
+  withProb <- FALSE #for the ROC test metric
+  verboseStatus = TRUE
+  
+  control <- trainControl(
+    index = cvIndex,
+    method=methodPar 
+    #number= numberPar,
+    #repeats= repeatsPar, 
+    #classProbs = withProb,
+    #returnResamp='none'
+  )
+  
+  randomSeed = 34567
+  
+  #test metrics
+  #Classification:
+  #Accuracy: x correct divided by y total instances. Easy to understand and widely used.
+  #Kappa: easily understood as accuracy that takes the base distribution of classes into account.
+  #Regression:
+  #RMSE: root mean squared error. Again, easy to understand and widely used.
+  #Rsquared: the goodness of fit or coefficient of determination.
+  
+  testMetric <- "Accuracy" #"Accuracy" #"ROC" #"Kappa"
+  tuneLength <- 15
+  #==================================================================  MODEL BUILDING
+  #=============decision regression tree models with caret package (it uses the information gain for splits)
+  set.seed(randomSeed)
+  modelTrained <- train(FinalPerformanceClass ~ ., 
+                        data= trainset,
+                        method = "rpart", 
+                        metric= testMetric, 
+                        trControl = control, 
+                        preProcess = c("center","scale"), 
+                        tuneLength = tuneLength,  
+                        parms=list(split='information')
+  )
+  print(plot(modelTrained))
+  key <- NULL
+  #key <- paste(modelTrained$method, sampleMethod, independentFeaturesStr, sep = "_", collapse = NULL)
+  key <- paste(modelTrained$method, "Info", "(", independentFeaturesStr, ")", sep = "", collapse = NULL)
+  trainedModelList[[key]] <- modelTrained
+  
+  #===================== comparisons of tested models through accuracy testing
+  if (FALSE){
+    
+    for (m in trainedModelList){
+      #print(m)
+      v <- validation(m, testset, targetFeature)
+      ConfusionMatrix <- v[2]
+      overall <- v$overall
+      accuracy <- round(as.numeric(overall['Accuracy']),3)
+      kappa <- round(as.numeric(overall['Kappa']),3)
+      modelName <- m$method
+      
+      trainsetLength <- NROW(trainset)
+      row <- paste(" ", featureSet, "&", trainsetLength, "\t&", format(round(accuracy, 2), nsmall = 2), "&", format(round(kappa, 2), nsmall = 2),  "&", sampleMethod,   "&", modelName , "&",  independentFeaturesStr, "\n")
+      cat(row)
+    } 
+}
+```
+
+
+```{r logit model}
+# Fit logistic regression models
+fit_model <- function(response_var) {
+  formula <- as.formula(paste(response_var, "~ anatom_site_general + sex + age_approx"))
+  model <- glm(formula, family = binomial(link = "logit"), data = train)
+  # Summary of the model
+  cat("Summary of the", response_var, "model:\n")
+  print(summary(model))
+  
+  # Exponentiated coefficients (odds ratios)
+  cat("Exponentiated coefficients (odds ratios):\n")
+  print(exp(coefficients(model)))
+  
+  # Nagelkerke's R-squared
+  cat("Nagelkerke's R-squared:\n")
+  print(rcompanion::nagelkerke(model))
+  
+  # Variance inflation factors (VIF) to see if multicollinearity is a problem
+  cat("Variance inflation factors (VIF):\n")
+  print(car::vif(model))
+  
+  # Predictions on validation data
+  predicted <- predict(model, valid, type = "response")
+  binary_predicted <- ifelse(predicted >= 0.5, 1, 0)
+  
+  # Confusion matrix for response_var, valid$. represents the actual response variable, binary_predictions are the binary predictions based on the threshold
+  confusion_matrix <- caret::confusionMatrix(factor(binary_predicted), factor(valid[[response_var]]))
+  cat("Confusion matrix for", response_var, ":\n")
+  print(confusion_matrix)
+  
+  # Receiver Operating Characteristic (ROC) curve, displays the % of True positivity predicted by the model as the prediction probability cutoff is [0,1]
+  epiDisplay::lroc(model, graph = TRUE)
+}
+
+# Fit models
+fit_model("DF")
+fit_model("NV")
+fit_model("MEL")
+fit_model("BCC")
+fit_model("BKL")
+fit_model("AK")
+fit_model("SCC")
+fit_model("VASC")
+
+```
+
+
+```{r kernel SVM model}
+
+#Fit SVM to the train dataset
+##radial (Gaussian) basis of the kernel type
+fit_svmR <- function(response_var, train, valid) {
+  formula <- as.formula(paste(response_var, "~ anatom_site_general + sex + age_approx"))
+  model <- e1071::svm(formula = formula,
+                      data = train,
+                      type = 'C-classification',
+                      kernel = 'radial')
+  # Summary of the model
+  cat("Summary of the", response_var, "model:\n")
+  print(summary(model))
+  
+  # Predictions on validation data
+  pred <- predict(model, newdata = valid)
+  
+  # Confusion matrix
+  confusion_matrix <- caret::confusionMatrix(pred, valid[[response_var]])
+  cat("Confusion matrix for", response_var, ":\n")
+  print(confusion_matrix)
+  
+#   # Visualizing the train dataset results
+#   library(Rfast)
+#   set = train_data ##declare set as the training set
+#   # this section creates the background region red/green. It does that by the 'by' which you can think of as the steps in python, so each 0.01 is interpreted as 0 or 1 and is either green or red. The -1 and +1 give us the space around the edges so the dots are not jammed
+#   X1 = seq(min(set[, 1]) - 1, max(set[, 1]) + 1, by = 0.01)
+#   X2 = seq(min(set[, 2]) - 1, max(set[, 2]) + 1, by = 0.01)
+#   X3 = seq(min(set[, 3]) - 1, max(set[, 3]) + 1, by = 0.01)
+#   grid_set = expand.grid(X1, X2)
+#   # giving a name to the X and Y 
+#   colnames(grid_set) = c('Anatomy site', 'Sex', 'Age')
+#   # this is the MAGIC of the background coloring
+#   # here we use the classifier to predict the result of each of each of the pixel bits noted above
+#   y_grid = predict(model, newdata = grid_set)
+#   # that's the end of the background
+#   # now we plat the actual data 
+#   plot(set[, -3],
+#      main = 'SVM Radial Kernel (Training set)',
+#      xlab = 'Anatomy site & Sex', ylab = 'Age',
+#      xlim = range(X1, X2), ylim = range(X3)) # this bit creates the limits to the values plotted this is also a part of the MAGIC as it creates the line between green and red
+#   contour(X1, X2, X3, matrix(as.numeric(y_gridR), length(X1), length(X2), length(X3)), add = TRUE)
+# # here we run through all the y_pred data and use ifelse to color the dots
+# # note the dots are the real data, the background is the pixel by pixel determination of y/n
+# # graph the dots on top of the background give you the image
+#   points(grid_set, pch = '.', col = ifelse(y_gridR == 1, 'springgreen3', 'tomato'))
+#   points(set, pch = 21, bg = ifelse(set[, 15] == 1, 'green4', 'red3'))
+}
+
+fit_svmR("binary_outcome", train_over, valid_over)
+fit_svmR("binary_outcome", train_under, valid_under)
+fit_svmR("binary_outcome", train_both, valid_both)
+fit_svmR("binary_outcome", train_rose, valid_rose)
+
+##linear of the kernel type
+fit_svmL <- function(response_var, trainSample, validSample) {
+  formula <- as.formula(paste(response_var, "~ anatom_site_general + sex + age_approx"))
+  model <- e1071::svm(formula = formula,
+                      data = trainSample,
+                      type = 'C-classification',
+                      kernel = 'linear')
+  # Summary of the model
+  cat("Summary of the", response_var, "model:\n")
+  print(summary(model))
+  
+  # Predictions on validation data
+  pred <- predict(model, newdata = validSample)
+  
+  # Confusion matrix
+  confusion_matrix <- caret::confusionMatrix(pred, valid[[response_var]])
+  cat("Confusion matrix for", response_var, ":\n")
+  print(confusion_matrix)
+}
+
+fit_svmL("binary_outcome", train_over, valid_over)
+fit_svmL("binary_outcome", train_under, valid_under)
+fit_svmL("binary_outcome", train_both, valid_both)
+fit_svmL("binary_outcome", train_rose, valid_rose)
+
+```
+
+
+```{r randomForest model}
+#Supervised ML algorithm, Ensemble learning (Random Forest): the major advantages is it avoids overfitting
+#Finding optimized value of random variables
+best_mtry <- tuneRF(train, train$outcome, stepFactor= 1.2, improve= .01, trace=T, plot=T, ntreeTry=150)
+best_mtry
+
+#Create a RF model
+model_RF <- randomForest::randomForest(outcome ~ anatom_site_general + sex+ age_approx, data=train, proximity=T)
+model_RF
+png(file="randomForestClassification.png") #as PNG file
+plot(model_RF) #plot the error, the number of trees graph
+dev.off() #saving the file
+
+hist(randomForest::treesize(model_RF), main="No. of Nodes for the Trees", col="green")
+rattle::importance(model_RF)
+caret::varImp(model_RF)
+randomForest::varImpPlot(model_RF, sort=T)
+
+#Single Variable
+par.Age <- pdp::partial(model_RF, pred.var=c("age_approx"), chull=T)
+plot.Age <- ggplot2::autoplot(par.Age, contour=T)
+plot.Age
+
+par.AnatomSite <- pdp::partial(model_RF, pred.var=c("anatom_site_general"), chull=T)
+plot.AnatomSite <- ggplot2::autoplot(par.AnatomSite, contour=T)
+plot.AnatomSite
+
+par.Sex <- pdp::partial(model_RF, pred.var=c("sex"), chull=T)
+plot.Sex <- ggplot2::autoplot(par.Sex, contour=T)
+plot.Sex
+
+#Two Variables
+par.Age.Site <- pdp::partial(model_RF, pred.var=c("age_approx","anatom_site_general"), chull=T)
+plot.Age.Site <- ggplot2::autoplot(par.Age.Site, contour=T, legend.title="Partial\ndependence")
+plot.Age.Site
+
+gridExtra::grid.arrange(plot.Age, plot.AnatomSite, plot.Sex, plot.Age.Site)
+
+pred_RF <- predict(model_RF, newdata=valid, type="class")
+caret::confusionMatrix(table(pred_RF, valid$outcome))
+
+
+#Model with over sampling
+model_RF_over <- randomForest::randomForest(binary_outcome ~ anatom_site_general + sex + age_approx, data=train_over, proximity=T)
+pred_RF_over <- predict(model_RF_over, newdata=valid_over, type="class")
+caret::confusionMatrix(table(pred_RF_over, valid_over$binary_outcome))
+
+#Model with under sampling
+model_RF_under <- randomForest::randomForest(binary_outcome ~ anatom_site_general + sex + age_approx, data=train_under, proximity=T)
+pred_RF_under <- predict(model_RF_under, newdata=valid_under, type="class")
+caret::confusionMatrix(table(pred_RF_under, valid_under$binary_outcome))
+
+#Model with both sampling
+model_RF_both <- randomForest::randomForest(binary_outcome ~ anatom_site_general + sex + age_approx, data=train_both, proximity=T)
+pred_RF_both <- predict(model_RF_both, newdata=valid_both, type="class")
+caret::confusionMatrix(table(pred_RF_both, valid_both$binary_outcome))
+
+#Model with ROSE sampling
+model_RF_rose <- randomForest::randomForest(binary_outcome ~ anatom_site_general + sex + age_approx, data=train_rose, proximity=T)
+pred_RF_rose <- predict(model_RF_rose, newdata=valid_rose, type="class")
+caret::confusionMatrix(table(pred_RF_rose, valid_rose$binary_outcome))
+```
+
+
+
+
+
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
