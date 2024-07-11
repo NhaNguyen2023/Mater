@@ -1,9 +1,3 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[202]:
-
-
 import os
 import pandas as pd
 from datetime import datetime, timedelta
@@ -16,28 +10,13 @@ import numpy as np
 import seaborn as sns
 
 
-# In[4]:
-
-
 file_path = "OT3 OT4 2019-2024June _noFilter.xlsx"
 sheet_name = "Data"
 main = pd.read_excel(file_path, sheet_name=sheet_name)
 
-
-# In[5]:
-
-
 main.info()
 
-
-# In[6]:
-
-
 main['Paint Draping Start DT']
-
-
-# In[ ]:
-
 
 # Description of Cardio-Thoracic Surgery
 
